@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import TextType from '@/components/TextType';
-import { Bell, Droplet, Heart, Users, LogIn, UserPlus } from 'lucide-react';
+import { Bell, Droplet, Heart, Users, LogIn, UserPlus, Building2 } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -40,6 +40,7 @@ export default function Home() {
               { name: "Home", link: "/" },
               { name: "Donate", link: "/auth/register" },
               { name: "Find Blood", link: "/blood-requests" },
+              { name: "Blood Banks", link: "/auth/blood-bank-login" },
               { name: "About", link: "#" },
             ]}
             className="hidden lg:flex"
@@ -146,6 +147,15 @@ export default function Home() {
               className="px-8 py-4 rounded-lg bg-gray-800 text-white font-semibold hover:bg-gray-900 transition-colors shadow-lg"
             >
               Find Blood
+            </Link>
+          </div>
+          <div className="mt-4">
+            <Link
+              href="/auth/blood-bank-login"
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 transition-colors shadow-lg"
+            >
+              <Building2 className="h-5 w-5" />
+              Blood Bank Login
             </Link>
           </div>
         </div>

@@ -11,6 +11,7 @@ import DonationScheduleModal, { DonationFormData } from '@/components/DonationSc
 import UserTypeSelector from '@/components/UserTypeSelector';
 import DonationListingForm, { DonationListingData } from '@/components/DonationListingForm';
 import DonationsList from '@/components/DonationsList';
+import BloodRequestForm, { BloodRequestData } from '@/components/BloodRequestForm';
 import { donationAPI, userAPI } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 import { toast, Toaster } from 'react-hot-toast';
@@ -22,6 +23,7 @@ export default function Dashboard() {
   const [showDonationModal, setShowDonationModal] = useState(false);
   const [showListingModal, setShowListingModal] = useState(false);
   const [showRescheduleModal, setShowRescheduleModal] = useState(false);
+  const [showBloodRequestModal, setShowBloodRequestModal] = useState(false);
   const [userType, setUserType] = useState<'donor' | 'recipient'>(
     user?.role?.toLowerCase() === 'recipient' ? 'recipient' : 'donor'
   );
@@ -721,13 +723,21 @@ export default function Dashboard() {
                     Refresh
                   </button>
 
-                  {userType === 'donor' && (
+                  {userType === 'donor' ? (
                     <button
                       onClick={handleListDonation}
                       className="bg-[#DC2626] hover:bg-[#B91C1C] text-white py-2 px-4 rounded-md transition-colors flex items-center"
                     >
                       <Plus className="h-4 w-4 mr-2" />
                       List Donation
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => setShowBloodRequestModal(true)}
+                      className="bg-[#DC2626] hover:bg-[#B91C1C] text-white py-2 px-4 rounded-md transition-colors flex items-center"
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Create Blood Request
                     </button>
                   )}
                 </div>
@@ -971,6 +981,18 @@ export default function Dashboard() {
         isOpen={showListingModal}
         onClose={() => setShowListingModal(false)}
         onSubmit={handleListingSubmit}
+      />
+
+      <BloodRequestForm
+        isOpen={showBloodRequestModal}
+        onClose={() => setShowBloodRequestModal(false)}
+        onSubmit={(data) => {
+          console.log('Blood request created:', data);
+          toast.success('Blood request created successfully!');
+          setShowBloodRequestModal(false);
+          // Optionally refresh data
+          refreshUserDataAndDonations();
+        }}
       />
     </div>
   );

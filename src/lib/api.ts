@@ -1033,6 +1033,494 @@ export const donationAPI = {
   }
 };
 
+// Matching API - Uses Hugging Face model bhyulljz/MLModelTwo
+export const matchingAPI = {
+  // Find matching donors for a blood request
+  findMatchingDonors: async (bloodRequest: any) => {
+    try {
+      const user = auth.currentUser;
+      if (!user) throw new Error('Not authenticated');
+
+      console.log('Finding matching donors for blood request:', bloodRequest.id);
+      console.log('Request blood type:', bloodRequest.bloodType);
+
+      // Get all donations from Firestore (try multiple status values)
+      const donationsRef = collection(db, 'donations');
+
+      // First try to get available donations
+      let donationsSnapshot = await getDocs(query(donationsRef, limit(100)));
+
+      console.log(`Found ${donationsSnapshot.docs.length} total donations in database`);
+
+      // Map donations to donor format
+      const availableDonors = donationsSnapshot.docs.map(docSnapshot => {
+        const data = docSnapshot.data();
+        console.log('Donation data:', docSnapshot.id, data.bloodType, data.status);
+        return {
+          id: docSnapshot.id,
+          donorId: data.donorId || data.userId,
+          donorName: data.donorName || data.name || 'Anonymous',
+          bloodType: data.bloodType,
+          location: data.location || data.city || '',
+          contactNumber: data.contactNumber || data.phone || '',
+          availability: data.availability || 'Available',
+          age: data.age,
+          gender: data.gender,
+          weight: data.weight,
+          rhVariants: data.rhVariants,
+          kell: data.kell,
+          duffy: data.duffy,
+          kidd: data.kidd,
+          lastDonationDate: data.lastDonationDate,
+          hemoglobinLevel: data.hemoglobinLevel,
+          totalDonations: data.totalDonations,
+          willingForEmergency: data.willingForEmergency,
+          // Hard stop eligibility factors
+          hivStatus: data.hivStatus || false,
+          hepatitisB: data.hepatitisB || false,
+          hepatitisC: data.hepatitisC || false,
+          htlv: data.htlv || false,
+          ivDrugUse: data.ivDrugUse || false,
+          // Temporary eligibility
+          recentColdFlu: data.recentColdFlu || false,
+          recentTattoo: data.recentTattoo || false,
+          recentSurgery: data.recentSurgery || false,
+          pregnant: data.pregnant || false,
+          recentVaccination: data.recentVaccination || false,
+          recentTravel: data.recentTravel || false,
+        };
+      }).filter(donor => donor.bloodType); // Only include donors with blood type
+
+      console.log(`Found ${availableDonors.length} donors with blood types to check`);
+      availableDonors.forEach(d => console.log(`  - ${d.donorName}: ${d.bloodType} at ${d.location}`));
+
+      // If no donations, also check users collection for donors
+      if (availableDonors.length === 0) {
+        console.log('No donations found, checking users collection for donors...');
+        const usersRef = collection(db, 'users');
+        const usersSnapshot = await getDocs(query(usersRef, where('role', '==', 'donor'), limit(100)));
+
+        usersSnapshot.docs.forEach(docSnapshot => {
+          const data = docSnapshot.data();
+          if (data.bloodType) {
+            availableDonors.push({
+              id: docSnapshot.id,
+              donorId: docSnapshot.id,
+              donorName: data.name || `${data.firstName || ''} ${data.lastName || ''}`.trim() || 'Anonymous',
+              bloodType: data.bloodType,
+              location: data.location || data.city || '',
+              contactNumber: data.contactNumber || data.phone || '',
+              availability: 'Available',
+              age: data.age,
+              gender: data.gender,
+              weight: data.weight,
+              rhVariants: data.rhVariants,
+              kell: data.kell,
+              duffy: data.duffy,
+              kidd: data.kidd,
+              lastDonationDate: data.lastDonationDate,
+              hemoglobinLevel: data.hemoglobinLevel,
+              totalDonations: data.totalDonations,
+              willingForEmergency: data.willingForEmergency,
+              hivStatus: false,
+              hepatitisB: false,
+              hepatitisC: false,
+              htlv: false,
+              ivDrugUse: false,
+              recentColdFlu: false,
+              recentTattoo: false,
+              recentSurgery: false,
+              pregnant: false,
+              recentVaccination: false,
+              recentTravel: false,
+            });
+          }
+        });
+        console.log(`Added ${availableDonors.length} donors from users collection`);
+      }
+
+      console.log(`Total ${availableDonors.length} available donors to match against`);
+
+      // Call the matching API with timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+
+      const response = await fetch('/api/match', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          recipientRequest: {
+            id: bloodRequest.id,
+            userId: bloodRequest.userId,
+            userName: bloodRequest.userName,
+            bloodType: bloodRequest.bloodType,
+            urgency: bloodRequest.urgency,
+            hospital: bloodRequest.hospital,
+            location: bloodRequest.location,
+            requiredBy: bloodRequest.requiredBy,
+            units: bloodRequest.units,
+            contactNumber: bloodRequest.contactNumber,
+            age: bloodRequest.age,
+            gender: bloodRequest.gender,
+            patientWeight: bloodRequest.patientWeight,
+            rhVariants: bloodRequest.rhVariants,
+            kell: bloodRequest.kell,
+            duffy: bloodRequest.duffy,
+            kidd: bloodRequest.kidd,
+            irradiatedBlood: bloodRequest.irradiatedBlood,
+            cmvNegative: bloodRequest.cmvNegative,
+            washedCells: bloodRequest.washedCells,
+            leukocyteReduced: bloodRequest.leukocyteReduced,
+          },
+          availableDonors,
+        }),
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        throw new Error('Matching API failed');
+      }
+
+      const matchingResult = await response.json();
+      console.log('Matching result:', matchingResult);
+
+      return matchingResult;
+    } catch (error) {
+      console.error('Error finding matching donors:', error);
+      throw error;
+    }
+  },
+
+  // Store match result in database
+  storeMatchResult: async (matchResult: any) => {
+    try {
+      const user = auth.currentUser;
+      if (!user) throw new Error('Not authenticated');
+
+      // Store in Firestore matches collection
+      const matchDoc = await addDoc(collection(db, 'matches'), {
+        ...matchResult,
+        createdAt: Timestamp.now(),
+        createdBy: user.uid,
+        status: 'pending',
+      });
+
+      console.log('Match result stored with ID:', matchDoc.id);
+
+      return { id: matchDoc.id, ...matchResult };
+    } catch (error) {
+      console.error('Error storing match result:', error);
+      throw error;
+    }
+  },
+
+  // Send notification to matched donors
+  notifyMatchedDonor: async (
+    donorId: string,
+    bloodRequest: any,
+    matchDetails: any
+  ) => {
+    try {
+      const user = auth.currentUser;
+      if (!user) throw new Error('Not authenticated');
+
+      // Create notification in Firestore with donor profile details
+      await addDoc(collection(db, 'notifications'), {
+        userId: donorId,
+        type: 'match',
+        title: 'Blood Donation Match',
+        message: `You are a match for a ${bloodRequest.urgency} ${bloodRequest.bloodType} blood request at ${bloodRequest.hospital}.`,
+        requestId: bloodRequest.id,
+        compatibilityScore: matchDetails.compatibilityScore,
+        priority: matchDetails.priority,
+        matchReasons: matchDetails.matchReasons || [],
+        // Include donor profile for display
+        donorProfile: {
+          bloodType: matchDetails.donorBloodType,
+          location: matchDetails.donorLocation,
+          availability: matchDetails.donorAvailability,
+        },
+        // Include recipient/request info
+        requestDetails: {
+          bloodType: bloodRequest.bloodType,
+          hospital: bloodRequest.hospital,
+          location: bloodRequest.location,
+          urgency: bloodRequest.urgency,
+          requiredBy: bloodRequest.requiredBy,
+          units: bloodRequest.units,
+          contactNumber: bloodRequest.contactNumber,
+        },
+        read: false,
+        createdAt: Timestamp.now(),
+      });
+
+      // Also add to realtime database for immediate delivery
+      await rtdbPush(ref(rtdb, `users/${donorId}/notifications`), {
+        type: 'match',
+        title: 'Blood Donation Match',
+        message: `You are a match for a ${bloodRequest.urgency} ${bloodRequest.bloodType} blood request at ${bloodRequest.hospital}.`,
+        requestId: bloodRequest.id,
+        compatibilityScore: matchDetails.compatibilityScore,
+        read: false,
+        createdAt: new Date().toISOString(),
+      });
+
+      console.log('Notification sent to donor:', donorId);
+      return { success: true };
+    } catch (error) {
+      console.error('Error notifying donor:', error);
+      throw error;
+    }
+  },
+
+  // Send notification to reception about matches
+  notifyReception: async (bloodRequest: any, matchResult: any) => {
+    try {
+      // Create a notification for reception/admin with detailed donor profiles
+      await addDoc(collection(db, 'reception_notifications'), {
+        type: 'blood_request_matched',
+        title: 'New Blood Request Matched',
+        message: `${matchResult.totalMatchesFound} donors matched for ${bloodRequest.bloodType} blood request from ${bloodRequest.userName}.`,
+        requestId: bloodRequest.id,
+        urgency: bloodRequest.urgency,
+        // Include request details
+        requestDetails: {
+          bloodType: bloodRequest.bloodType,
+          hospital: bloodRequest.hospital,
+          location: bloodRequest.location,
+          requiredBy: bloodRequest.requiredBy,
+          units: bloodRequest.units,
+          patientName: bloodRequest.userName,
+          contactNumber: bloodRequest.contactNumber,
+        },
+        // Include full donor profiles for top matches
+        matches: matchResult.matches.slice(0, 10).map((m: any) => ({
+          donorId: m.donorId,
+          donorName: m.donorName,
+          donorBloodType: m.donorBloodType,
+          donorLocation: m.donorLocation,
+          donorContact: m.donorContact,
+          donorAvailability: m.donorAvailability,
+          compatibilityScore: m.compatibilityScore,
+          priority: m.priority,
+          isEligible: m.isEligible,
+          matchReasons: m.matchReasons || [],
+          warnings: m.warnings || [],
+        })),
+        read: false,
+        createdAt: Timestamp.now(),
+      });
+
+      // Also push to realtime database for immediate notification
+      await rtdbPush(ref(rtdb, 'reception/notifications'), {
+        type: 'blood_request_matched',
+        title: 'New Blood Request Matched',
+        message: `${matchResult.totalMatchesFound} donors matched for ${bloodRequest.bloodType}`,
+        requestId: bloodRequest.id,
+        urgency: bloodRequest.urgency,
+        matchCount: matchResult.totalMatchesFound,
+        // Include top donor profiles for quick view
+        topMatches: matchResult.matches.slice(0, 5).map((m: any) => ({
+          donorId: m.donorId,
+          donorName: m.donorName,
+          bloodType: m.donorBloodType,
+          location: m.donorLocation,
+          contact: m.donorContact,
+          availability: m.donorAvailability,
+          score: m.compatibilityScore,
+          priority: m.priority,
+          isEligible: m.isEligible,
+        })),
+        requestDetails: {
+          bloodType: bloodRequest.bloodType,
+          hospital: bloodRequest.hospital,
+          patientName: bloodRequest.userName,
+        },
+        createdAt: new Date().toISOString(),
+      });
+
+      console.log('Reception notified about matches');
+      return { success: true };
+    } catch (error) {
+      console.error('Error notifying reception:', error);
+      throw error;
+    }
+  },
+
+  // Get all matches for a blood request
+  getMatchesForRequest: async (requestId: string) => {
+    try {
+      const matchesQuery = query(
+        collection(db, 'matches'),
+        where('requestId', '==', requestId),
+        orderBy('createdAt', 'desc'),
+        limit(1)
+      );
+
+      const matchesSnapshot = await getDocs(matchesQuery);
+      if (matchesSnapshot.empty) return null;
+
+      const matchDoc = matchesSnapshot.docs[0];
+      return { id: matchDoc.id, ...matchDoc.data() };
+    } catch (error) {
+      console.error('Error getting matches:', error);
+      throw error;
+    }
+  },
+
+  // Get reception notifications
+  getReceptionNotifications: async () => {
+    try {
+      const notificationsQuery = query(
+        collection(db, 'reception_notifications'),
+        orderBy('createdAt', 'desc'),
+        limit(50)
+      );
+
+      const snapshot = await getDocs(notificationsQuery);
+      return snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+    } catch (error) {
+      console.error('Error getting reception notifications:', error);
+      throw error;
+    }
+  },
+
+  // Mark reception notification as read
+  markReceptionNotificationRead: async (notificationId: string) => {
+    try {
+      await updateDoc(doc(db, 'reception_notifications', notificationId), {
+        read: true,
+        readAt: Timestamp.now(),
+      });
+      return { success: true };
+    } catch (error) {
+      console.error('Error marking notification as read:', error);
+      throw error;
+    }
+  },
+
+  // Run matching for all active blood requests
+  runMatchingForAllRequests: async () => {
+    try {
+      const user = auth.currentUser;
+      if (!user) throw new Error('Not authenticated');
+
+      console.log('Running matching for all blood requests...');
+
+      // Get all blood requests (not filtering by status since it may not be set)
+      const requestsRef = collection(db, 'blood_requests');
+      const requestsSnapshot = await getDocs(query(requestsRef, limit(50)));
+
+      console.log(`Found ${requestsSnapshot.docs.length} blood requests in database`);
+
+      const results = [];
+
+      for (const requestDoc of requestsSnapshot.docs) {
+        const requestData = requestDoc.data();
+        const bloodRequest = {
+          id: requestDoc.id,
+          ...requestData
+        };
+
+        console.log(`Processing request ${bloodRequest.id}: ${requestData.bloodType}`);
+
+        try {
+          // Find matching donors
+          const matchResult = await matchingAPI.findMatchingDonors(bloodRequest);
+
+          if (matchResult.totalMatchesFound > 0) {
+            // Try to store match result (may fail due to permissions)
+            try {
+              await matchingAPI.storeMatchResult(matchResult);
+            } catch (storeError) {
+              console.warn('Could not store match result:', storeError);
+            }
+
+            // Try to notify reception (may fail due to permissions)
+            try {
+              await matchingAPI.notifyReception(bloodRequest, matchResult);
+            } catch (notifyError) {
+              console.warn('Could not notify reception:', notifyError);
+            }
+
+            results.push({
+              requestId: bloodRequest.id,
+              bloodType: requestData.bloodType,
+              matchesFound: matchResult.totalMatchesFound,
+              matches: matchResult.matches, // Include actual matches data
+              success: true
+            });
+          } else {
+            results.push({
+              requestId: bloodRequest.id,
+              bloodType: requestData.bloodType,
+              matchesFound: 0,
+              success: true,
+              message: 'No compatible donors found'
+            });
+          }
+        } catch (matchError: any) {
+          console.error(`Error matching request ${bloodRequest.id}:`, matchError);
+          results.push({
+            requestId: bloodRequest.id,
+            bloodType: requestData.bloodType,
+            success: false,
+            error: matchError.message
+          });
+        }
+      }
+
+      console.log('Matching complete for all requests:', results);
+      return {
+        totalRequests: requestsSnapshot.docs.length,
+        results
+      };
+    } catch (error) {
+      console.error('Error running batch matching:', error);
+      throw error;
+    }
+  },
+
+  // Get all active blood requests with their match status
+  getActiveRequestsWithMatches: async () => {
+    try {
+      const requestsRef = collection(db, 'blood_requests');
+      const requestsSnapshot = await getDocs(query(requestsRef, where('status', '==', 'active')));
+
+      const requests = await Promise.all(
+        requestsSnapshot.docs.map(async (requestDoc) => {
+          const data = requestDoc.data();
+
+          // Try to get existing matches for this request
+          let matches: any = null;
+          try {
+            matches = await matchingAPI.getMatchesForRequest(requestDoc.id);
+          } catch (e) {
+            // No matches yet
+          }
+
+          return {
+            id: requestDoc.id,
+            ...data,
+            hasMatches: !!matches,
+            matchCount: (matches as any)?.matches?.length || 0
+          };
+        })
+      );
+
+      return requests;
+    } catch (error) {
+      console.error('Error getting active requests:', error);
+      throw error;
+    }
+  }
+};
+
 // Helper function to create a content hash for deduplication
 function hashDonationContent(data: any): string {
   // Simple string-based hash

@@ -4,6 +4,7 @@ import { collection, addDoc, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase-config';
 import { toast } from 'react-hot-toast';
 import { useAuth } from '@/lib/auth-context';
+import { matchingAPI } from '@/lib/api';
 
 export interface BloodRequestData {
     id?: string;
@@ -177,8 +178,15 @@ export default function BloodRequestForm({ isOpen, onClose, onSubmit }: BloodReq
 
             console.log(`Submitting blood request (ID: ${submissionId}):`, submissionData);
 
-            const bloodRequestData = {
-                ...submissionData,
+            // Build the blood request data, filtering out empty/undefined values
+            const bloodRequestData: Record<string, any> = {
+                bloodType: submissionData.bloodType,
+                urgency: submissionData.urgency,
+                hospital: submissionData.hospital,
+                location: submissionData.location,
+                requiredBy: submissionData.requiredBy,
+                units: Number(submissionData.units),
+                contactNumber: submissionData.contactNumber,
                 userId: user.uid,
                 userEmail: user.email,
                 userName: userData?.firstName && userData?.lastName
@@ -189,15 +197,118 @@ export default function BloodRequestForm({ isOpen, onClose, onSubmit }: BloodReq
                 distance: 'N/A',
                 createdAt: Timestamp.now(),
                 submissionId,
-                // Convert string fields to numbers
-                age: submissionData.age ? Number(submissionData.age) : undefined,
-                patientWeight: submissionData.patientWeight ? Number(submissionData.patientWeight) : undefined,
-                units: Number(submissionData.units),
             };
+
+            // Only add optional fields if they have values (Firestore doesn't accept undefined)
+            if (submissionData.age && submissionData.age !== '') {
+                bloodRequestData.age = Number(submissionData.age);
+            }
+            if (submissionData.patientWeight && submissionData.patientWeight !== '') {
+                bloodRequestData.patientWeight = Number(submissionData.patientWeight);
+            }
+            if (submissionData.gender && submissionData.gender !== '') {
+                bloodRequestData.gender = submissionData.gender;
+            }
+            if (submissionData.additionalInfo && submissionData.additionalInfo !== '') {
+                bloodRequestData.additionalInfo = submissionData.additionalInfo;
+            }
+            if (submissionData.diagnosisReason && submissionData.diagnosisReason !== '') {
+                bloodRequestData.diagnosisReason = submissionData.diagnosisReason;
+            }
+            if (submissionData.transfusionHistory && submissionData.transfusionHistory !== '') {
+                bloodRequestData.transfusionHistory = submissionData.transfusionHistory;
+            }
+            if (submissionData.allergies && submissionData.allergies !== '') {
+                bloodRequestData.allergies = submissionData.allergies;
+            }
+            if (submissionData.currentMedications && submissionData.currentMedications !== '') {
+                bloodRequestData.currentMedications = submissionData.currentMedications;
+            }
+            
+            // Add boolean fields only if true
+            if (submissionData.rhVariants) {
+                bloodRequestData.rhVariants = submissionData.rhVariants;
+            }
+            if (submissionData.kell) bloodRequestData.kell = true;
+            if (submissionData.duffy) bloodRequestData.duffy = true;
+            if (submissionData.kidd) bloodRequestData.kidd = true;
+            if (submissionData.irradiatedBlood) bloodRequestData.irradiatedBlood = true;
+            if (submissionData.cmvNegative) bloodRequestData.cmvNegative = true;
+            if (submissionData.washedCells) bloodRequestData.washedCells = true;
+            if (submissionData.leukocyteReduced) bloodRequestData.leukocyteReduced = true;
 
             const docRef = await addDoc(collection(db, 'blood_requests'), bloodRequestData);
 
             console.log('Blood request created successfully:', docRef.id);
+
+            // Update toast to show matching in progress
+            toast.loading('Finding matching donors...', { id: toastId });
+
+            // Trigger AI matching to find compatible donors
+            try {
+                const requestWithId = {
+                    ...bloodRequestData,
+                    id: docRef.id,
+                };
+
+                console.log('Starting AI donor matching for request:', docRef.id);
+                
+                // Find matching donors using the Hugging Face model
+                const matchResult = await matchingAPI.findMatchingDonors(requestWithId);
+                
+                console.log('Matching complete:', matchResult.totalMatchesFound, 'donors found');
+
+                if (matchResult.totalMatchesFound > 0) {
+                    // Store the match result in database
+                    await matchingAPI.storeMatchResult(matchResult);
+                    
+                    // Send notification to reception with matched donor profiles
+                    await matchingAPI.notifyReception(requestWithId, matchResult);
+                    
+                    // Notify top matched donors (high priority matches only)
+                    const highPriorityMatches = matchResult.matches.filter(
+                        (m: any) => m.priority === 'high' && m.isEligible
+                    );
+                    
+                    for (const match of highPriorityMatches.slice(0, 3)) {
+                        try {
+                            // Get the actual donor user ID from the donation
+                            if (match.donorId) {
+                                await matchingAPI.notifyMatchedDonor(
+                                    match.donorId,
+                                    requestWithId,
+                                    match
+                                );
+                            }
+                        } catch (notifyError) {
+                            console.warn('Failed to notify donor:', match.donorId, notifyError);
+                        }
+                    }
+
+                    toast.success(
+                        `Blood request created! Found ${matchResult.totalMatchesFound} matching donors. Reception has been notified.`,
+                        { id: toastId, duration: 5000 }
+                    );
+                } else {
+                    toast.success(
+                        'Blood request created! No immediate matches found. We will notify you when donors become available.',
+                        { id: toastId, duration: 5000 }
+                    );
+                }
+
+                // Dispatch event to refresh dashboard data
+                if (typeof window !== 'undefined') {
+                    window.dispatchEvent(new CustomEvent('blood-request-matched', {
+                        detail: { requestId: docRef.id, matchResult }
+                    }));
+                }
+            } catch (matchError) {
+                console.error('Matching failed, but request was created:', matchError);
+                toast.success(
+                    'Blood request created! Matching will be processed shortly.',
+                    { id: toastId }
+                );
+            }
 
             if (onSubmit) {
                 // Type-safe submission data with proper number conversions
@@ -210,8 +321,6 @@ export default function BloodRequestForm({ isOpen, onClose, onSubmit }: BloodReq
                 };
                 onSubmit(submitData);
             }
-
-            toast.success('Blood request created successfully!', { id: toastId });
         } catch (error: any) {
             console.error('Error creating blood request:', error);
             const errorMessage = error.message || 'Failed to create blood request. Please try again.';

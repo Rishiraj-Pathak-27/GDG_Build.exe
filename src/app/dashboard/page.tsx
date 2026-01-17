@@ -12,7 +12,7 @@ import UserTypeSelector from '@/components/UserTypeSelector';
 import DonationListingForm, { DonationListingData } from '@/components/DonationListingForm';
 import DonationsList from '@/components/DonationsList';
 import BloodRequestForm, { BloodRequestData } from '@/components/BloodRequestForm';
-import { donationAPI, userAPI } from '@/lib/api';
+import { donationAPI, userAPI, matchingAPI } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 import { toast, Toaster } from 'react-hot-toast';
 
@@ -38,6 +38,59 @@ export default function Dashboard() {
   ]);
   const [userNotifications, setUserNotifications] = useState<any[]>([]);
   const [processedDonationIds, setProcessedDonationIds] = useState<Set<string>>(new Set());
+  const [isMatchingRunning, setIsMatchingRunning] = useState(false);
+  const [matchResults, setMatchResults] = useState<any[]>([]);
+
+  // Run AI matching for all active blood requests
+  const handleRunAIMatching = async () => {
+    if (isMatchingRunning) return;
+    
+    setIsMatchingRunning(true);
+    const loadingToast = toast.loading('Running AI Matching...');
+    
+    try {
+      console.log('Starting AI matching for all active blood requests...');
+      
+      // Run matching for all active requests
+      const result = await matchingAPI.runMatchingForAllRequests();
+      
+      console.log('AI Matching complete:', result);
+      
+      // Process results and add to notifications
+      const newNotifications: any[] = [];
+      
+      for (const matchResult of result.results) {
+        if (matchResult.success && matchResult.matchesFound > 0) {
+          newNotifications.push({
+            id: `match-${matchResult.requestId}-${Date.now()}`,
+            type: 'match',
+            title: `🎯 AI Match Found!`,
+            message: `Found ${matchResult.matchesFound} compatible donors for ${matchResult.bloodType} blood request`,
+            bloodType: matchResult.bloodType,
+            matchesFound: matchResult.matchesFound,
+            requestId: matchResult.requestId,
+            createdAt: new Date().toISOString(),
+            read: false,
+          });
+        }
+      }
+      
+      // Add new match notifications to the top
+      setUserNotifications(prev => [...newNotifications, ...prev]);
+      setMatchResults(result.results);
+      
+      toast.success(
+        `AI Matching Complete! Processed ${result.totalRequests} requests, found matches for ${result.results.filter((r: any) => r.matchesFound > 0).length} requests.`,
+        { id: loadingToast, duration: 5000 }
+      );
+      
+    } catch (error: any) {
+      console.error('AI Matching error:', error);
+      toast.error(`AI Matching failed: ${error.message}`, { id: loadingToast });
+    } finally {
+      setIsMatchingRunning(false);
+    }
+  };
 
   // Update userType when user changes
   useEffect(() => {
@@ -877,15 +930,24 @@ export default function Dashboard() {
                   <h3 className="text-xl font-semibold text-gray-900 mb-4">Notifications</h3>
                   <div className="space-y-4">
                     {userNotifications.length > 0 ? (
-                      userNotifications.slice(0, 3).map((notification) => (
-                        <div key={notification.id || Math.random()} className="flex items-start space-x-4 p-4 rounded-md bg-gray-50 border border-red-100">
-                          <div className={`flex-shrink-0 p-2 rounded-md ${notification.type === 'request'
-                            ? 'bg-blue-100'
-                            : notification.type === 'accepted'
+                      userNotifications.slice(0, 5).map((notification) => (
+                        <div key={notification.id || Math.random()} className={`flex items-start space-x-4 p-4 rounded-md border ${
+                          notification.type === 'match' 
+                            ? 'bg-green-50 border-green-200' 
+                            : 'bg-gray-50 border-red-100'
+                        }`}>
+                          <div className={`flex-shrink-0 p-2 rounded-md ${
+                            notification.type === 'match'
                               ? 'bg-green-100'
-                              : 'bg-gray-100'
-                            }`}>
-                            {notification.type === 'request' ? (
+                              : notification.type === 'request'
+                                ? 'bg-blue-100'
+                                : notification.type === 'accepted'
+                                  ? 'bg-green-100'
+                                  : 'bg-gray-100'
+                          }`}>
+                            {notification.type === 'match' ? (
+                              <Heart className="h-5 w-5 text-green-600" />
+                            ) : notification.type === 'request' ? (
                               <Heart className="h-5 w-5 text-blue-600" />
                             ) : notification.type === 'accepted' ? (
                               <CheckCircle className="h-5 w-5 text-green-600" />
@@ -894,8 +956,43 @@ export default function Dashboard() {
                             )}
                           </div>
                           <div className="flex-1">
-                            <p className="text-gray-900 font-medium">{notification.title || 'Notification'}</p>
+                            <div className="flex items-center justify-between">
+                              <p className="text-gray-900 font-medium">{notification.title || 'Notification'}</p>
+                              {notification.compatibilityScore && (
+                                <span className={`text-sm font-bold px-2 py-0.5 rounded ${
+                                  notification.compatibilityScore >= 80 
+                                    ? 'bg-green-100 text-green-700' 
+                                    : notification.compatibilityScore >= 60 
+                                      ? 'bg-yellow-100 text-yellow-700'
+                                      : 'bg-orange-100 text-orange-700'
+                                }`}>
+                                  {notification.compatibilityScore}% Match
+                                </span>
+                              )}
+                            </div>
                             <p className="text-gray-600">{notification.message || ''}</p>
+                            
+                            {/* Show donor profile details for match notifications */}
+                            {notification.type === 'match' && notification.donorProfile && (
+                              <div className="mt-2 p-3 bg-white rounded-md border border-green-100">
+                                <p className="text-sm font-medium text-gray-700 mb-1">Matched Donor Profile:</p>
+                                <div className="grid grid-cols-2 gap-2 text-sm">
+                                  {notification.donorProfile.bloodType && (
+                                    <div className="flex items-center">
+                                      <Droplet className="h-3 w-3 text-[#DC2626] mr-1" />
+                                      <span className="text-gray-600">Blood Type: </span>
+                                      <span className="font-medium text-[#DC2626] ml-1">{notification.donorProfile.bloodType}</span>
+                                    </div>
+                                  )}
+                                  {notification.donorProfile.location && (
+                                    <div className="flex items-center text-gray-600">
+                                      <span>📍 {notification.donorProfile.location}</span>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                            
                             <p className="text-xs text-gray-500 mt-1">
                               {notification.createdAt?.toDate ?
                                 new Date(notification.createdAt.toDate()).toLocaleString() :
@@ -914,7 +1011,7 @@ export default function Dashboard() {
                         <Bell className="h-12 w-12 mx-auto text-gray-400 mb-3" />
                         <h3 className="text-lg font-semibold text-gray-900">No notifications</h3>
                         <p className="text-gray-600 mt-1">
-                          We'll notify you of important updates here
+                          We'll notify you of important updates and donor matches here
                         </p>
                       </div>
                     )}
@@ -932,6 +1029,33 @@ export default function Dashboard() {
                 <div className="p-6 rounded-lg bg-white border border-red-100 shadow-sm">
                   <h3 className="text-xl font-semibold text-gray-900 mb-4">Direct Actions</h3>
                   <div className="space-y-3">
+                    {/* AI Matching Button - Only for Recipients */}
+                    {userType === 'recipient' && (
+                      <button
+                        onClick={handleRunAIMatching}
+                        disabled={isMatchingRunning}
+                        className={`w-full py-3 rounded-md transition-all flex items-center justify-center space-x-2 ${
+                          isMatchingRunning 
+                            ? 'bg-purple-400 cursor-not-allowed' 
+                            : 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700'
+                        } text-white font-medium shadow-lg`}>
+                        {isMatchingRunning ? (
+                          <span className="flex items-center space-x-2">
+                            <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/>
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+                            </svg>
+                            <span>Running AI Matching...</span>
+                          </span>
+                        ) : (
+                          <span className="flex items-center space-x-2">
+                            <span role="img" aria-label="robot">🤖</span>
+                            <span>Find Matching Donors</span>
+                          </span>
+                        )}
+                      </button>
+                    )}
+                    
                     <button
                       onClick={userType === 'donor' ? handleDonateNow : handleRequestDonation.bind(null, donations.find(d => d.status === 'available')?.id || '')}
                       className="w-full bg-[#DC2626] hover:bg-[#B91C1C] text-white py-3 rounded-md transition-colors">
@@ -954,6 +1078,103 @@ export default function Dashboard() {
                     </button>
                   </div>
                 </div>
+
+                {/* AI Match Results Panel - Only for Recipients */}
+                {userType === 'recipient' && matchResults.length > 0 && (
+                  <div className="p-6 rounded-lg bg-gradient-to-br from-purple-50 to-indigo-50 border border-purple-200 shadow-sm">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-xl font-semibold text-gray-900 flex items-center">
+                        <span className="mr-2">🎯</span>
+                        AI Match Results
+                      </h3>
+                      <span className="text-sm text-purple-600 font-medium">
+                        {matchResults.filter(r => r.matchesFound > 0).length} matches found
+                      </span>
+                    </div>
+                    <div className="space-y-4 max-h-[400px] overflow-y-auto">
+                      {matchResults.map((result, index) => (
+                        <div key={index} className={`p-4 rounded-lg border ${
+                          result.matchesFound > 0 
+                            ? 'bg-white border-green-200' 
+                            : 'bg-gray-50 border-gray-200'
+                        }`}>
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center space-x-2">
+                              <Droplet className={`h-5 w-5 ${result.matchesFound > 0 ? 'text-[#DC2626]' : 'text-gray-400'}`} />
+                              <span className="font-semibold text-lg">{result.bloodType}</span>
+                              <span className="text-gray-500">Blood Request</span>
+                            </div>
+                            <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                              result.matchesFound > 0 
+                                ? 'bg-green-100 text-green-700' 
+                                : 'bg-gray-100 text-gray-600'
+                            }`}>
+                              {result.matchesFound > 0 
+                                ? `${result.matchesFound} Donors Matched` 
+                                : 'No Match'}
+                            </span>
+                          </div>
+                          
+                          {result.success && result.matchesFound > 0 && (
+                            <div className="mt-3 pt-3 border-t border-gray-100">
+                              <p className="text-sm font-medium text-gray-700 mb-2">Matched Donors:</p>
+                              <div className="space-y-2">
+                                {result.matches?.slice(0, 3).map((match: any, i: number) => (
+                                  <div key={i} className="flex items-center justify-between bg-green-50 p-2 rounded">
+                                    <div className="flex items-center space-x-2">
+                                      <Droplet className="h-4 w-4 text-[#DC2626]" />
+                                      <span className="font-medium">{match.donorName}</span>
+                                      <span className="text-sm text-gray-600">({match.donorBloodType})</span>
+                                      <span className="text-xs text-gray-500">📍 {match.donorLocation}</span>
+                                    </div>
+                                    <span className={`text-sm font-bold px-2 py-0.5 rounded ${
+                                      match.compatibilityScore >= 80 ? 'bg-green-200 text-green-800' :
+                                      match.compatibilityScore >= 60 ? 'bg-yellow-200 text-yellow-800' :
+                                      'bg-orange-200 text-orange-800'
+                                    }`}>
+                                      {match.compatibilityScore}% match
+                                    </span>
+                                  </div>
+                                ))}
+                                {result.matches?.length > 3 && (
+                                  <p className="text-xs text-gray-500">+{result.matches.length - 3} more donors</p>
+                                )}
+                              </div>
+                              <button
+                                onClick={() => router.push('/blood-requests')}
+                                className="text-sm text-purple-600 hover:text-purple-800 font-medium flex items-center mt-2"
+                              >
+                                View Request Details →
+                              </button>
+                            </div>
+                          )}
+                          
+                          {result.error && (
+                            <p className="text-sm text-red-600 mt-2">Error: {result.error}</p>
+                          )}
+                          
+                          {result.success && result.matchesFound === 0 && (
+                            <div className="mt-2 text-sm text-gray-500">
+                              <p className="font-medium text-gray-600">Why no matches?</p>
+                              <p>No compatible blood types found in the donor pool. {result.bloodType} can only receive from:</p>
+                              <p className="text-xs mt-1 text-gray-400">
+                                {result.bloodType === 'O-' ? 'O- only (universal recipient for O-)' :
+                                 result.bloodType === 'O+' ? 'O-, O+' :
+                                 result.bloodType === 'A-' ? 'A-, O-' :
+                                 result.bloodType === 'A+' ? 'A+, A-, O+, O-' :
+                                 result.bloodType === 'B-' ? 'B-, O-' :
+                                 result.bloodType === 'B+' ? 'B+, B-, O+, O-' :
+                                 result.bloodType === 'AB-' ? 'AB-, A-, B-, O-' :
+                                 result.bloodType === 'AB+' ? 'All blood types (universal recipient)' :
+                                 'Compatible blood types'}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>

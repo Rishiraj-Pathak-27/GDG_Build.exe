@@ -42,13 +42,13 @@ export default function BloodBankLogin() {
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 text-gray-900 flex flex-col">
+        <div className="min-h-screen bg-gradient-to-br from-red-50 to-white text-gray-900 flex flex-col">
             {/* Header */}
-            <header className="bg-white shadow-sm py-4 border-b border-blue-100">
+            <header className="bg-white shadow-sm py-4 border-b border-red-100">
                 <div className="container mx-auto px-4 flex justify-between items-center">
                     <Link href="/" className="flex items-center space-x-2 text-gray-900">
-                        <Building2 className="h-6 w-6 text-blue-600" />
-                        <span className="text-xl font-semibold">BloodConnect <span className="text-blue-600">for Banks</span></span>
+                        <Building2 className="h-6 w-6 text-red-600" />
+                        <span className="text-xl font-semibold">BloodConnect <span className="text-red-600">for Banks</span></span>
                     </Link>
                     <Link
                         href="/"
@@ -62,10 +62,10 @@ export default function BloodBankLogin() {
 
             {/* Main Content */}
             <main className="flex-1 flex items-center justify-center p-4">
-                <div className="w-full max-w-md p-8 rounded-xl bg-white border border-blue-100 shadow-xl">
+                <div className="w-full max-w-md p-8 rounded-xl bg-white border border-red-100 shadow-xl">
                     <div className="text-center mb-8">
-                        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-100 mb-4">
-                            <Building2 className="h-8 w-8 text-blue-600" />
+                        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-red-100 mb-4">
+                            <Building2 className="h-8 w-8 text-red-600" />
                         </div>
                         <h1 className="text-3xl font-bold text-gray-900">Blood Bank Login</h1>
                         <p className="text-gray-600 mt-2">Access your analytics dashboard</p>
@@ -101,7 +101,7 @@ export default function BloodBankLogin() {
                                 type="email"
                                 required
                                 placeholder="admin@bloodbank.com"
-                                className="w-full px-4 py-3 bg-white border border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded-md text-gray-900 placeholder-gray-400"
+                                className="w-full px-4 py-3 bg-white border border-gray-300 focus:border-red-500 focus:ring-1 focus:ring-red-500 rounded-md text-gray-900 placeholder-gray-400"
                             />
                         </div>
 
@@ -110,7 +110,7 @@ export default function BloodBankLogin() {
                                 <label htmlFor="password" className="block text-sm font-medium text-gray-700">
                                     Password
                                 </label>
-                                <Link href="#" className="text-xs text-blue-600 hover:text-blue-700">
+                                <Link href="#" className="text-xs text-red-600 hover:text-red-700">
                                     Forgot password?
                                 </Link>
                             </div>
@@ -120,7 +120,7 @@ export default function BloodBankLogin() {
                                 type="password"
                                 required
                                 placeholder="Enter your password"
-                                className="w-full px-4 py-3 bg-white border border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded-md text-gray-900 placeholder-gray-400"
+                                className="w-full px-4 py-3 bg-white border border-gray-300 focus:border-red-500 focus:ring-1 focus:ring-red-500 rounded-md text-gray-900 placeholder-gray-400"
                             />
                         </div>
 
@@ -129,7 +129,7 @@ export default function BloodBankLogin() {
                                 id="remember-me"
                                 name="remember-me"
                                 type="checkbox"
-                                className="h-4 w-4 text-blue-600 bg-white border-gray-300 rounded focus:ring-blue-500"
+                                className="h-4 w-4 text-red-600 bg-white border-gray-300 rounded focus:ring-red-500"
                             />
                             <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-600">
                                 Remember me
@@ -139,7 +139,7 @@ export default function BloodBankLogin() {
                         <button
                             type="submit"
                             disabled={isLoading}
-                            className="w-full flex justify-center items-center gap-2 py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="w-full flex justify-center items-center gap-2 py-3 px-4 bg-red-600 hover:bg-red-700 text-white font-medium rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             {isLoading ? (
                                 <>
@@ -157,7 +157,7 @@ export default function BloodBankLogin() {
 
                     <div className="mt-6 text-center text-sm">
                         <span className="text-gray-600">New blood bank?</span>
-                        <Link href="/auth/blood-bank-register" className="ml-1 text-blue-600 hover:text-blue-700 font-medium">
+                        <Link href="/auth/blood-bank-register" className="ml-1 text-red-600 hover:text-red-700 font-medium">
                             Register here
                         </Link>
                     </div>

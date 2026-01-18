@@ -195,15 +195,94 @@ export async function POST(request: NextRequest) {
                     matchReasons.push('Exact blood type match');
                 }
 
+                // Add antigen matching reasons
+                if (donor.rhVariants && recipientRequest.rhVariants) {
+                    matchReasons.push('Rh antigen profile compatible');
+                }
+                if (donor.kell && recipientRequest.kell) {
+                    matchReasons.push('Kell antigen matched');
+                }
+                if (donor.duffy && recipientRequest.duffy) {
+                    matchReasons.push('Duffy antigen matched');
+                }
+                if (donor.kidd && recipientRequest.kidd) {
+                    matchReasons.push('Kidd antigen matched');
+                }
+
+                // Location bonus
+                if (donor.location && recipientRequest.location) {
+                    const donorLoc = donor.location.toLowerCase();
+                    const recipientLoc = recipientRequest.location.toLowerCase();
+                    if (donorLoc.includes(recipientLoc) || recipientLoc.includes(donorLoc)) {
+                        matchReasons.push('Nearby location');
+                    }
+                }
+
+                // Emergency willingness
+                if (donor.willingForEmergency && recipientRequest.urgency === 'critical') {
+                    matchReasons.push('Available for emergency');
+                }
+
+                // Experienced donor
+                if (donor.totalDonations && donor.totalDonations >= 5) {
+                    matchReasons.push(`Experienced donor (${donor.totalDonations} donations)`);
+                }
+
                 const priority = score >= 80 ? 'high' : score >= 50 ? 'medium' : 'low';
 
                 matches.push({
+                    // Core Donor Identity & Demographics
                     donorId: donor.id,
                     donorName: donor.donorName || 'Anonymous Donor',
-                    donorBloodType: donor.bloodType,
                     donorLocation: donor.location,
                     donorContact: donor.contactNumber,
                     donorAvailability: donor.availability,
+                    email: donor.email,
+                    age: donor.age,
+                    gender: donor.gender,
+
+                    // Blood Type & Rh Factor (Essential)
+                    donorBloodType: donor.bloodType,
+                    rhPositive: donor.bloodType?.includes('+'),
+
+                    // Extended Antigen Profile (Gold Standard)
+                    rhVariants: donor.rhVariants,
+                    kell: donor.kell,
+                    duffy: donor.duffy,
+                    kidd: donor.kidd,
+
+                    // Donation History & Physiology
+                    lastDonationDate: donor.lastDonationDate,
+                    totalDonations: donor.totalDonations || 0,
+                    hemoglobinLevel: donor.hemoglobinLevel,
+                    weight: donor.weight,
+                    deferralHistory: donor.deferralHistory,
+
+                    // Absolute Eligibility Status (Hard Stop) - all should be false for eligible donors
+                    eligibilityFactors: {
+                        hivStatus: donor.hivStatus || false,
+                        hepatitisB: donor.hepatitisB || false,
+                        hepatitisC: donor.hepatitisC || false,
+                        htlv: donor.htlv || false,
+                        ivDrugUse: donor.ivDrugUse || false,
+                    },
+
+                    // Temporary Eligibility Factors
+                    temporaryFactors: {
+                        recentColdFlu: donor.recentColdFlu || false,
+                        recentTattoo: donor.recentTattoo || false,
+                        recentSurgery: donor.recentSurgery || false,
+                        pregnant: donor.pregnant || false,
+                        recentVaccination: donor.recentVaccination || false,
+                        recentTravel: donor.recentTravel || false,
+                    },
+
+                    // Communication & Availability
+                    willingForEmergency: donor.willingForEmergency || false,
+                    preferredContactMethod: donor.preferredContactMethod,
+                    responseRate: donor.responseRate,
+
+                    // Matching Results
                     compatibilityScore: score,
                     matchReasons,
                     warnings: tempEligibility.warnings,

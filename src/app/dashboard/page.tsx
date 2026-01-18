@@ -1,6 +1,6 @@
 'use client';
 
-import { Bell, Droplet, Heart, Users, LayoutDashboard, User, Settings, LogOut, UserCircle, Calendar, AlertCircle, Clock, Phone, Mail, Info, Plus, Edit, CheckCircle } from 'lucide-react';
+import { Bell, Droplet, Heart, Users, LayoutDashboard, User, Settings, LogOut, UserCircle, Calendar, AlertCircle, Clock, Phone, Mail, Info, Plus, Edit, CheckCircle, MapPin, Eye } from 'lucide-react';
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import { Sidebar, SidebarBody, SidebarLink } from '@/components/ui/sidebar';
@@ -12,6 +12,8 @@ import UserTypeSelector from '@/components/UserTypeSelector';
 import DonationListingForm, { DonationListingData } from '@/components/DonationListingForm';
 import DonationsList from '@/components/DonationsList';
 import BloodRequestForm, { BloodRequestData } from '@/components/BloodRequestForm';
+import DonorProfileModal, { DonorProfile } from '@/components/DonorProfileModal';
+import NoMatchExplanation from '@/components/NoMatchExplanation';
 import { donationAPI, userAPI, matchingAPI } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 import { toast, Toaster } from 'react-hot-toast';
@@ -40,25 +42,27 @@ export default function Dashboard() {
   const [processedDonationIds, setProcessedDonationIds] = useState<Set<string>>(new Set());
   const [isMatchingRunning, setIsMatchingRunning] = useState(false);
   const [matchResults, setMatchResults] = useState<any[]>([]);
+  const [selectedDonorProfile, setSelectedDonorProfile] = useState<DonorProfile | null>(null);
+  const [showDonorProfileModal, setShowDonorProfileModal] = useState(false);
 
   // Run AI matching for all active blood requests
   const handleRunAIMatching = async () => {
     if (isMatchingRunning) return;
-    
+
     setIsMatchingRunning(true);
     const loadingToast = toast.loading('Running AI Matching...');
-    
+
     try {
       console.log('Starting AI matching for all active blood requests...');
-      
+
       // Run matching for all active requests
       const result = await matchingAPI.runMatchingForAllRequests();
-      
+
       console.log('AI Matching complete:', result);
-      
+
       // Process results and add to notifications
       const newNotifications: any[] = [];
-      
+
       for (const matchResult of result.results) {
         if (matchResult.success && matchResult.matchesFound > 0) {
           newNotifications.push({
@@ -74,16 +78,16 @@ export default function Dashboard() {
           });
         }
       }
-      
+
       // Add new match notifications to the top
       setUserNotifications(prev => [...newNotifications, ...prev]);
       setMatchResults(result.results);
-      
+
       toast.success(
         `AI Matching Complete! Processed ${result.totalRequests} requests, found matches for ${result.results.filter((r: any) => r.matchesFound > 0).length} requests.`,
         { id: loadingToast, duration: 5000 }
       );
-      
+
     } catch (error: any) {
       console.error('AI Matching error:', error);
       toast.error(`AI Matching failed: ${error.message}`, { id: loadingToast });
@@ -679,78 +683,164 @@ export default function Dashboard() {
           </SidebarBody>
         </Sidebar>
 
-        <main className="flex-1 overflow-y-auto">
+        <main className="flex-1 overflow-y-auto bg-gradient-to-br from-gray-50 via-white to-red-50/30">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            <div className="flex justify-between items-center mb-8">
-              <h2 className="text-3xl font-bold text-gray-900">
-                Welcome to Your <span className="text-[#DC2626]">Dashboard</span>
-              </h2>
 
-              <div className="relative">
-                <Bell className="h-6 w-6 text-[#DC2626] cursor-pointer" />
-                <span className="absolute -top-1 -right-1 bg-[#DC2626] text-white text-xs w-4 h-4 flex items-center justify-center rounded-full">
-                  {notifications.length}
-                </span>
+            {/* Hero Welcome Section */}
+            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-red-600 via-red-500 to-rose-500 p-8 mb-8 shadow-xl">
+              <div className="absolute inset-0 bg-[url('/grid.svg')] opacity-10"></div>
+              <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-white/10 blur-3xl"></div>
+              <div className="absolute -left-20 -bottom-20 h-64 w-64 rounded-full bg-white/10 blur-3xl"></div>
+
+              <div className="relative flex flex-col md:flex-row md:items-center md:justify-between">
+                <div className="mb-4 md:mb-0">
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="h-12 w-12 rounded-full bg-white/20 flex items-center justify-center backdrop-blur-sm">
+                      {userType === 'donor' ? (
+                        <Heart className="h-6 w-6 text-white" />
+                      ) : (
+                        <Droplet className="h-6 w-6 text-white" />
+                      )}
+                    </div>
+                    <span className="px-3 py-1 rounded-full bg-white/20 text-white text-sm font-medium backdrop-blur-sm">
+                      {userType === 'donor' ? '🩸 Blood Donor' : '💉 Recipient'}
+                    </span>
+                  </div>
+                  <h2 className="text-3xl md:text-4xl font-bold text-white mb-2">
+                    Welcome back, {userData?.firstName || user?.email?.split('@')[0] || 'User'}!
+                  </h2>
+                  <p className="text-white/80 text-lg">
+                    {userType === 'donor'
+                      ? 'Your donations save lives. Thank you for being a hero!'
+                      : 'Find compatible donors and manage your blood requests.'}
+                  </p>
+                </div>
+
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <button
+                    onClick={() => userType === 'donor' ? setShowListingModal(true) : setShowBloodRequestModal(true)}
+                    className="px-6 py-3 bg-white text-red-600 font-semibold rounded-xl hover:bg-gray-100 transition-all shadow-lg flex items-center justify-center gap-2"
+                  >
+                    <Plus className="h-5 w-5" />
+                    {userType === 'donor' ? 'List Donation' : 'Create Request'}
+                  </button>
+                  <div className="relative">
+                    <button className="p-3 bg-white/20 hover:bg-white/30 rounded-xl transition-colors backdrop-blur-sm">
+                      <Bell className="h-5 w-5 text-white" />
+                    </button>
+                    {notifications.length > 0 && (
+                      <span className="absolute -top-1 -right-1 bg-yellow-400 text-yellow-900 text-xs w-5 h-5 flex items-center justify-center rounded-full font-bold">
+                        {notifications.length}
+                      </span>
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
 
             <UserTypeSelector userType={userType} setUserType={setUserType} />
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 mb-8">
-              <div className="p-6 rounded-lg bg-white border border-red-100 shadow-sm">
-                <div className="flex items-center space-x-3">
-                  <Heart className="h-6 w-6 text-[#DC2626]" />
-                  <div>
-                    <p className="text-gray-600 text-sm">
-                      {userType === 'donor' ? 'Total Donations' : 'Total Received'}
-                    </p>
-                    <p className="text-2xl font-bold text-gray-900">
-                      {userType === 'donor'
-                        ? donorStats.totalDonations
-                        : recipientStats.totalReceived}
-                    </p>
+            {/* Enhanced Stats Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+              {/* Stat Card 1 */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3, delay: 0.1 }}
+                className="relative overflow-hidden p-6 rounded-2xl bg-white shadow-lg border border-gray-100 hover:shadow-xl transition-shadow group"
+              >
+                <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-red-100 to-red-50 rounded-full -translate-y-1/2 translate-x-1/2 group-hover:scale-110 transition-transform"></div>
+                <div className="relative">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="p-3 rounded-xl bg-gradient-to-br from-red-500 to-red-600 shadow-lg shadow-red-200">
+                      <Heart className="h-6 w-6 text-white" />
+                    </div>
+                    <span className="text-xs font-medium text-green-600 bg-green-100 px-2 py-1 rounded-full">
+                      +12%
+                    </span>
                   </div>
+                  <p className="text-gray-500 text-sm font-medium mb-1">
+                    {userType === 'donor' ? 'Total Donations' : 'Total Received'}
+                  </p>
+                  <p className="text-3xl font-bold text-gray-900">
+                    {userType === 'donor' ? donorStats.totalDonations : recipientStats.totalReceived}
+                  </p>
                 </div>
-              </div>
-              <div className="p-6 rounded-lg bg-white border border-red-100 shadow-sm">
-                <div className="flex items-center space-x-3">
-                  <Users className="h-6 w-6 text-[#DC2626]" />
-                  <div>
-                    <p className="text-gray-600 text-sm">Lives Impacted</p>
-                    <p className="text-2xl font-bold text-gray-900">
-                      {donorStats.totalDonations * 3 || 0}
-                    </p>
+              </motion.div>
+
+              {/* Stat Card 2 */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3, delay: 0.2 }}
+                className="relative overflow-hidden p-6 rounded-2xl bg-white shadow-lg border border-gray-100 hover:shadow-xl transition-shadow group"
+              >
+                <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-purple-100 to-purple-50 rounded-full -translate-y-1/2 translate-x-1/2 group-hover:scale-110 transition-transform"></div>
+                <div className="relative">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="p-3 rounded-xl bg-gradient-to-br from-purple-500 to-purple-600 shadow-lg shadow-purple-200">
+                      <Users className="h-6 w-6 text-white" />
+                    </div>
+                    <span className="text-xs font-medium text-purple-600 bg-purple-100 px-2 py-1 rounded-full">
+                      Lives Saved
+                    </span>
                   </div>
+                  <p className="text-gray-500 text-sm font-medium mb-1">Lives Impacted</p>
+                  <p className="text-3xl font-bold text-gray-900">{donorStats.totalDonations * 3 || 0}</p>
                 </div>
-              </div>
-              <div className="p-6 rounded-lg bg-white border border-red-100 shadow-sm">
-                <div className="flex items-center space-x-3">
-                  <Calendar className="h-6 w-6 text-[#DC2626]" />
-                  <div>
-                    <p className="text-gray-600 text-sm">Next Appointment</p>
-                    <p className="text-2xl font-bold text-gray-900">
-                      {appointments.length > 0 ? appointments[0].date : "None"}
-                    </p>
+              </motion.div>
+
+              {/* Stat Card 3 */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3, delay: 0.3 }}
+                className="relative overflow-hidden p-6 rounded-2xl bg-white shadow-lg border border-gray-100 hover:shadow-xl transition-shadow group"
+              >
+                <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-blue-100 to-blue-50 rounded-full -translate-y-1/2 translate-x-1/2 group-hover:scale-110 transition-transform"></div>
+                <div className="relative">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="p-3 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 shadow-lg shadow-blue-200">
+                      <Calendar className="h-6 w-6 text-white" />
+                    </div>
+                    {appointments.length > 0 && (
+                      <span className="text-xs font-medium text-blue-600 bg-blue-100 px-2 py-1 rounded-full">
+                        Upcoming
+                      </span>
+                    )}
                   </div>
+                  <p className="text-gray-500 text-sm font-medium mb-1">Next Appointment</p>
+                  <p className="text-2xl font-bold text-gray-900">
+                    {appointments.length > 0 ? appointments[0].date : "None Scheduled"}
+                  </p>
                 </div>
-              </div>
-              <div className="p-6 rounded-lg bg-white border border-red-100 shadow-sm">
-                <div className="flex items-center space-x-3">
-                  <AlertCircle className="h-6 w-6 text-[#DC2626]" />
-                  <div>
-                    <p className="text-gray-600 text-sm">
-                      {userType === 'donor'
-                        ? 'Listed Donations'
-                        : 'Available Donors'}
-                    </p>
-                    <p className="text-2xl font-bold text-gray-900">
-                      {userType === 'donor'
-                        ? donorStats.listedDonations
-                        : recipientStats.availableDonors}
-                    </p>
+              </motion.div>
+
+              {/* Stat Card 4 */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3, delay: 0.4 }}
+                className="relative overflow-hidden p-6 rounded-2xl bg-white shadow-lg border border-gray-100 hover:shadow-xl transition-shadow group"
+              >
+                <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-emerald-100 to-emerald-50 rounded-full -translate-y-1/2 translate-x-1/2 group-hover:scale-110 transition-transform"></div>
+                <div className="relative">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="p-3 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 shadow-lg shadow-emerald-200">
+                      <Droplet className="h-6 w-6 text-white" />
+                    </div>
+                    <span className="text-xs font-medium text-emerald-600 bg-emerald-100 px-2 py-1 rounded-full">
+                      Active
+                    </span>
                   </div>
+                  <p className="text-gray-500 text-sm font-medium mb-1">
+                    {userType === 'donor' ? 'Listed Donations' : 'Available Donors'}
+                  </p>
+                  <p className="text-3xl font-bold text-gray-900">
+                    {userType === 'donor' ? donorStats.listedDonations : recipientStats.availableDonors}
+                  </p>
                 </div>
-              </div>
+              </motion.div>
             </div>
 
             <div className="mb-8">
@@ -847,230 +937,260 @@ export default function Dashboard() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-6">
-                <div className="p-6 rounded-lg bg-white border border-red-100 shadow-sm">
-                  <h3 className="text-xl font-semibold text-gray-900 mb-4">Quick Actions</h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {/* Quick Actions - Enhanced */}
+                <div className="p-6 rounded-2xl bg-white shadow-lg border border-gray-100">
+                  <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+                    <span className="p-2 rounded-lg bg-red-100">⚡</span>
+                    Quick Actions
+                  </h3>
+                  <div className="grid grid-cols-1 gap-3">
+                    {/* Primary Action */}
                     <button
                       onClick={userType === 'donor' ? handleScheduleDonation : handleRequestDonation.bind(null, donations.find(d => d.status === 'available')?.id || '')}
-                      className="bg-[#DC2626] hover:bg-[#B91C1C] text-white py-3 px-4 rounded-md transition-colors flex items-center justify-center space-x-2">
-                      <Calendar className="h-5 w-5" />
-                      <span>{userType === 'donor' ? 'Schedule Donation' : 'Find Donors'}</span>
+                      className="group relative overflow-hidden bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white py-4 px-6 rounded-xl transition-all shadow-lg shadow-red-200 flex items-center justify-between"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 bg-white/20 rounded-lg backdrop-blur-sm">
+                          <Calendar className="h-5 w-5" />
+                        </div>
+                        <div className="text-left">
+                          <p className="font-semibold">{userType === 'donor' ? 'Schedule Donation' : 'Find Donors'}</p>
+                          <p className="text-xs text-white/70">{userType === 'donor' ? 'Book your next appointment' : 'Search for matching donors'}</p>
+                        </div>
+                      </div>
+                      <span className="text-white/50 group-hover:translate-x-1 transition-transform">→</span>
                     </button>
-                    <button
-                      onClick={handleUpdateProfile}
-                      className="bg-transparent border border-[#DC2626] text-[#DC2626] hover:bg-[#DC2626]/10 py-3 px-4 rounded-md transition-colors flex items-center justify-center space-x-2">
-                      <User className="h-5 w-5" />
-                      <span>Update Profile</span>
-                    </button>
-                    <button
-                      onClick={handleViewBloodRequests}
-                      className="bg-transparent border border-[#DC2626] text-[#DC2626] hover:bg-[#DC2626]/10 py-3 px-4 rounded-md transition-colors flex items-center justify-center space-x-2">
-                      <Droplet className="h-5 w-5" />
-                      <span>View Blood Requests</span>
-                    </button>
+
+                    {/* Secondary Actions */}
+                    <div className="grid grid-cols-2 gap-3">
+                      <button
+                        onClick={handleUpdateProfile}
+                        className="group p-4 rounded-xl border-2 border-gray-200 hover:border-red-300 hover:bg-red-50 transition-all flex flex-col items-center gap-2"
+                      >
+                        <div className="p-3 rounded-full bg-gray-100 group-hover:bg-red-100 transition-colors">
+                          <User className="h-5 w-5 text-gray-600 group-hover:text-red-600 transition-colors" />
+                        </div>
+                        <span className="text-sm font-medium text-gray-700">Update Profile</span>
+                      </button>
+                      <button
+                        onClick={handleViewBloodRequests}
+                        className="group p-4 rounded-xl border-2 border-gray-200 hover:border-red-300 hover:bg-red-50 transition-all flex flex-col items-center gap-2"
+                      >
+                        <div className="p-3 rounded-full bg-gray-100 group-hover:bg-red-100 transition-colors">
+                          <Droplet className="h-5 w-5 text-gray-600 group-hover:text-red-600 transition-colors" />
+                        </div>
+                        <span className="text-sm font-medium text-gray-700">Blood Requests</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
 
-                <div className="p-6 rounded-lg bg-white border border-red-100 shadow-sm">
-                  <h3 className="text-xl font-semibold text-gray-900 mb-4">Upcoming Appointments</h3>
-                  <div className="space-y-4">
+                {/* Upcoming Appointments - Enhanced */}
+                <div className="p-6 rounded-2xl bg-white shadow-lg border border-gray-100">
+                  <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+                    <span className="p-2 rounded-lg bg-blue-100">📅</span>
+                    Upcoming Appointments
+                  </h3>
+                  <div className="space-y-3">
                     {appointments.length > 0 ? (
                       appointments.map((appointment) => (
-                        <div key={appointment.id} className="flex items-start space-x-4 p-4 rounded-md bg-gray-50 border border-red-100">
-                          <div className="flex-shrink-0 p-2 bg-[#DC2626]/10 rounded-md">
-                            <Calendar className="h-5 w-5 text-[#DC2626]" />
-                          </div>
-                          <div className="flex-1">
-                            <p className="text-gray-900 font-medium">{appointment.date}</p>
-                            <div className="flex items-center space-x-2 text-sm text-gray-600">
-                              <Clock className="h-4 w-4" />
-                              <span>{appointment.time}</span>
+                        <div key={appointment.id} className="group relative overflow-hidden p-4 rounded-xl bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 hover:shadow-md transition-all">
+                          <div className="flex items-start justify-between">
+                            <div className="flex items-start gap-3">
+                              <div className="p-3 bg-blue-500 rounded-xl text-white shadow-lg shadow-blue-200">
+                                <Calendar className="h-5 w-5" />
+                              </div>
+                              <div>
+                                <p className="text-gray-900 font-semibold text-lg">{appointment.date}</p>
+                                <div className="flex items-center gap-3 mt-1">
+                                  <span className="flex items-center text-sm text-gray-600">
+                                    <Clock className="h-4 w-4 mr-1 text-blue-500" />
+                                    {appointment.time}
+                                  </span>
+                                  <span className="flex items-center text-sm text-gray-600">
+                                    <MapPin className="h-4 w-4 mr-1 text-blue-500" />
+                                    {appointment.location}
+                                  </span>
+                                </div>
+                              </div>
                             </div>
-                            <p className="text-sm text-gray-600 mt-1">{appointment.location}</p>
-                          </div>
-                          <div className="flex flex-col space-y-2">
-                            <span className={`text-xs px-2 py-1 rounded-full ${appointment.status === 'confirmed'
-                              ? 'bg-green-100 text-green-700'
-                              : 'bg-yellow-100 text-yellow-700'
-                              }`}>
-                              {appointment.status === 'confirmed' ? 'Confirmed' : 'Pending'}
-                            </span>
-                            <button
-                              onClick={() => handleRescheduleAppointment(appointment)}
-                              className="flex items-center text-xs text-[#DC2626] hover:underline"
-                            >
-                              <Edit className="h-3 w-3 mr-1" />
-                              Reschedule
-                            </button>
+                            <div className="flex flex-col items-end gap-2">
+                              <span className={`text-xs px-3 py-1 rounded-full font-medium ${appointment.status === 'confirmed'
+                                ? 'bg-green-100 text-green-700 border border-green-200'
+                                : 'bg-yellow-100 text-yellow-700 border border-yellow-200'
+                                }`}>
+                                {appointment.status === 'confirmed' ? '✓ Confirmed' : '⏳ Pending'}
+                              </span>
+                              <button
+                                onClick={() => handleRescheduleAppointment(appointment)}
+                                className="text-xs text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1"
+                              >
+                                <Edit className="h-3 w-3" />
+                                Reschedule
+                              </button>
+                            </div>
                           </div>
                         </div>
                       ))
                     ) : (
-                      <div className="text-center p-8 bg-gray-50 border border-red-100 rounded-md">
-                        <Calendar className="h-12 w-12 mx-auto text-gray-400 mb-3" />
+                      <div className="text-center p-8 bg-gradient-to-br from-gray-50 to-blue-50/30 rounded-xl border-2 border-dashed border-gray-200">
+                        <div className="p-4 bg-blue-100 rounded-full w-fit mx-auto mb-4">
+                          <Calendar className="h-8 w-8 text-blue-500" />
+                        </div>
                         <h3 className="text-lg font-semibold text-gray-900">No upcoming appointments</h3>
-                        <p className="text-gray-600 mt-1">
+                        <p className="text-gray-500 mt-1 text-sm">
                           {userType === 'donor'
-                            ? 'Schedule a donation to get started'
-                            : 'Request a donation when you need blood'}
+                            ? 'Schedule a donation to save lives!'
+                            : 'Request blood when you need it'}
                         </p>
+                        <button
+                          onClick={userType === 'donor' ? handleScheduleDonation : () => setShowBloodRequestModal(true)}
+                          className="mt-4 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm font-medium transition-colors"
+                        >
+                          {userType === 'donor' ? 'Schedule Now' : 'Create Request'}
+                        </button>
                       </div>
-                    )}
-                    {appointments.length > 0 && (
-                      <button className="w-full mt-2 bg-transparent border border-red-100 text-gray-900 hover:bg-gray-50 py-2 rounded-md transition-colors">
-                        View All Appointments
-                      </button>
                     )}
                   </div>
                 </div>
               </div>
 
               <div className="space-y-6">
-                <div className="p-6 rounded-lg bg-white border border-red-100 shadow-sm">
-                  <h3 className="text-xl font-semibold text-gray-900 mb-4">Notifications</h3>
-                  <div className="space-y-4">
+                {/* Notifications - Enhanced */}
+                <div className="p-6 rounded-2xl bg-white shadow-lg border border-gray-100">
+                  <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+                    <span className="p-2 rounded-lg bg-orange-100">🔔</span>
+                    Notifications
+                    {userNotifications.filter(n => !n.read).length > 0 && (
+                      <span className="ml-2 px-2 py-0.5 bg-red-500 text-white text-xs rounded-full">
+                        {userNotifications.filter(n => !n.read).length} new
+                      </span>
+                    )}
+                  </h3>
+                  <div className="space-y-3 max-h-[300px] overflow-y-auto">
                     {userNotifications.length > 0 ? (
                       userNotifications.slice(0, 5).map((notification) => (
-                        <div key={notification.id || Math.random()} className={`flex items-start space-x-4 p-4 rounded-md border ${
-                          notification.type === 'match' 
-                            ? 'bg-green-50 border-green-200' 
-                            : 'bg-gray-50 border-red-100'
-                        }`}>
-                          <div className={`flex-shrink-0 p-2 rounded-md ${
-                            notification.type === 'match'
-                              ? 'bg-green-100'
-                              : notification.type === 'request'
-                                ? 'bg-blue-100'
-                                : notification.type === 'accepted'
-                                  ? 'bg-green-100'
-                                  : 'bg-gray-100'
+                        <div key={notification.id || Math.random()} className={`relative p-4 rounded-xl border transition-all hover:shadow-md ${notification.type === 'match'
+                          ? 'bg-gradient-to-r from-green-50 to-emerald-50 border-green-200'
+                          : notification.type === 'request'
+                            ? 'bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200'
+                            : 'bg-gray-50 border-gray-200'
                           }`}>
-                            {notification.type === 'match' ? (
-                              <Heart className="h-5 w-5 text-green-600" />
-                            ) : notification.type === 'request' ? (
-                              <Heart className="h-5 w-5 text-blue-600" />
-                            ) : notification.type === 'accepted' ? (
-                              <CheckCircle className="h-5 w-5 text-green-600" />
-                            ) : (
-                              <Info className="h-5 w-5 text-gray-600" />
-                            )}
-                          </div>
-                          <div className="flex-1">
-                            <div className="flex items-center justify-between">
-                              <p className="text-gray-900 font-medium">{notification.title || 'Notification'}</p>
-                              {notification.compatibilityScore && (
-                                <span className={`text-sm font-bold px-2 py-0.5 rounded ${
-                                  notification.compatibilityScore >= 80 
-                                    ? 'bg-green-100 text-green-700' 
-                                    : notification.compatibilityScore >= 60 
-                                      ? 'bg-yellow-100 text-yellow-700'
-                                      : 'bg-orange-100 text-orange-700'
-                                }`}>
-                                  {notification.compatibilityScore}% Match
-                                </span>
+                          {notification.read === false && (
+                            <div className="absolute top-3 right-3 h-3 w-3 rounded-full bg-red-500 animate-pulse"></div>
+                          )}
+                          <div className="flex items-start gap-3">
+                            <div className={`p-2 rounded-xl ${notification.type === 'match'
+                              ? 'bg-green-500 text-white'
+                              : notification.type === 'request'
+                                ? 'bg-blue-500 text-white'
+                                : notification.type === 'accepted'
+                                  ? 'bg-green-500 text-white'
+                                  : 'bg-gray-400 text-white'
+                              }`}>
+                              {notification.type === 'match' ? (
+                                <Heart className="h-4 w-4" />
+                              ) : notification.type === 'request' ? (
+                                <Droplet className="h-4 w-4" />
+                              ) : notification.type === 'accepted' ? (
+                                <CheckCircle className="h-4 w-4" />
+                              ) : (
+                                <Info className="h-4 w-4" />
                               )}
                             </div>
-                            <p className="text-gray-600">{notification.message || ''}</p>
-                            
-                            {/* Show donor profile details for match notifications */}
-                            {notification.type === 'match' && notification.donorProfile && (
-                              <div className="mt-2 p-3 bg-white rounded-md border border-green-100">
-                                <p className="text-sm font-medium text-gray-700 mb-1">Matched Donor Profile:</p>
-                                <div className="grid grid-cols-2 gap-2 text-sm">
-                                  {notification.donorProfile.bloodType && (
-                                    <div className="flex items-center">
-                                      <Droplet className="h-3 w-3 text-[#DC2626] mr-1" />
-                                      <span className="text-gray-600">Blood Type: </span>
-                                      <span className="font-medium text-[#DC2626] ml-1">{notification.donorProfile.bloodType}</span>
-                                    </div>
-                                  )}
-                                  {notification.donorProfile.location && (
-                                    <div className="flex items-center text-gray-600">
-                                      <span>📍 {notification.donorProfile.location}</span>
-                                    </div>
-                                  )}
-                                </div>
+                            <div className="flex-1">
+                              <div className="flex items-center justify-between">
+                                <p className="text-gray-900 font-semibold text-sm">{notification.title || 'Notification'}</p>
+                                {notification.compatibilityScore && (
+                                  <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${notification.compatibilityScore >= 80
+                                    ? 'bg-green-100 text-green-700'
+                                    : notification.compatibilityScore >= 60
+                                      ? 'bg-yellow-100 text-yellow-700'
+                                      : 'bg-orange-100 text-orange-700'
+                                    }`}>
+                                    {notification.compatibilityScore}%
+                                  </span>
+                                )}
                               </div>
-                            )}
-                            
-                            <p className="text-xs text-gray-500 mt-1">
-                              {notification.createdAt?.toDate ?
-                                new Date(notification.createdAt.toDate()).toLocaleString() :
-                                typeof notification.createdAt === 'string' ?
-                                  new Date(notification.createdAt).toLocaleString() :
-                                  'Unknown date'}
-                            </p>
+                              <p className="text-gray-600 text-sm mt-1">{notification.message || ''}</p>
+                              <p className="text-xs text-gray-400 mt-2">
+                                {notification.createdAt?.toDate ?
+                                  new Date(notification.createdAt.toDate()).toLocaleString() :
+                                  typeof notification.createdAt === 'string' ?
+                                    new Date(notification.createdAt).toLocaleString() :
+                                    'Just now'}
+                              </p>
+                            </div>
                           </div>
-                          {notification.read === false && (
-                            <div className="h-2 w-2 rounded-full bg-[#DC2626]"></div>
-                          )}
                         </div>
                       ))
                     ) : (
-                      <div className="text-center p-8 bg-gray-50 border border-red-100 rounded-md">
-                        <Bell className="h-12 w-12 mx-auto text-gray-400 mb-3" />
-                        <h3 className="text-lg font-semibold text-gray-900">No notifications</h3>
-                        <p className="text-gray-600 mt-1">
-                          We'll notify you of important updates and donor matches here
+                      <div className="text-center p-6 bg-gradient-to-br from-gray-50 to-orange-50/30 rounded-xl border-2 border-dashed border-gray-200">
+                        <div className="p-4 bg-orange-100 rounded-full w-fit mx-auto mb-3">
+                          <Bell className="h-6 w-6 text-orange-500" />
+                        </div>
+                        <h3 className="text-base font-semibold text-gray-900">No notifications yet</h3>
+                        <p className="text-gray-500 text-sm mt-1">
+                          We'll notify you of important updates
                         </p>
                       </div>
-                    )}
-                    {userNotifications.length > 0 && (
-                      <button
-                        className="w-full mt-2 bg-transparent border border-red-100 text-gray-900 hover:bg-gray-50 py-2 rounded-md transition-colors"
-                        onClick={() => router.push('/notifications')}
-                      >
-                        View All Notifications
-                      </button>
                     )}
                   </div>
                 </div>
 
-                <div className="p-6 rounded-lg bg-white border border-red-100 shadow-sm">
-                  <h3 className="text-xl font-semibold text-gray-900 mb-4">Direct Actions</h3>
+                {/* Direct Actions - Enhanced */}
+                <div className="p-6 rounded-2xl bg-gradient-to-br from-gray-900 to-gray-800 shadow-xl">
+                  <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                    <span className="p-2 rounded-lg bg-white/10">🚀</span>
+                    Quick Access
+                  </h3>
                   <div className="space-y-3">
                     {/* AI Matching Button - Only for Recipients */}
                     {userType === 'recipient' && (
                       <button
                         onClick={handleRunAIMatching}
                         disabled={isMatchingRunning}
-                        className={`w-full py-3 rounded-md transition-all flex items-center justify-center space-x-2 ${
-                          isMatchingRunning 
-                            ? 'bg-purple-400 cursor-not-allowed' 
-                            : 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700'
-                        } text-white font-medium shadow-lg`}>
+                        className={`w-full py-4 rounded-xl transition-all flex items-center justify-center gap-3 ${isMatchingRunning
+                          ? 'bg-purple-400/50 cursor-not-allowed'
+                          : 'bg-gradient-to-r from-purple-500 via-pink-500 to-red-500 hover:from-purple-600 hover:via-pink-600 hover:to-red-600'
+                          } text-white font-semibold shadow-lg`}>
                         {isMatchingRunning ? (
-                          <span className="flex items-center space-x-2">
+                          <>
                             <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
-                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/>
-                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                             </svg>
-                            <span>Running AI Matching...</span>
-                          </span>
+                            <span>Finding Matches...</span>
+                          </>
                         ) : (
-                          <span className="flex items-center space-x-2">
-                            <span role="img" aria-label="robot">🤖</span>
-                            <span>Find Matching Donors</span>
-                          </span>
+                          <>
+                            <span className="text-xl">🤖</span>
+                            <span>AI-Powered Donor Matching</span>
+                          </>
                         )}
                       </button>
                     )}
-                    
+
                     <button
                       onClick={userType === 'donor' ? handleDonateNow : handleRequestDonation.bind(null, donations.find(d => d.status === 'available')?.id || '')}
-                      className="w-full bg-[#DC2626] hover:bg-[#B91C1C] text-white py-3 rounded-md transition-colors">
+                      className="w-full bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white py-3 rounded-xl transition-all font-medium flex items-center justify-center gap-2 shadow-lg shadow-red-500/30">
+                      <Heart className="h-5 w-5" />
                       {userType === 'donor' ? 'Donate Now' : 'Request Blood'}
                     </button>
-                    <button
-                      onClick={() => handleRescheduleAppointment()}
-                      className="w-full bg-transparent border border-[#DC2626] text-[#DC2626] hover:bg-[#DC2626]/10 py-3 rounded-md transition-colors">
-                      {userType === 'donor' ? 'Reschedule Appointment' : 'View Request Status'}
-                    </button>
-                    <button
-                      onClick={handleViewBloodBanks}
-                      className="w-full bg-transparent border border-red-100 text-gray-900 hover:bg-gray-50 py-3 rounded-md transition-colors">
-                      View Blood Banks
-                    </button>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <button
+                        onClick={() => handleRescheduleAppointment()}
+                        className="bg-white/10 hover:bg-white/20 text-white py-3 rounded-xl transition-colors text-sm font-medium">
+                        {userType === 'donor' ? '📅 Reschedule' : '📊 Status'}
+                      </button>
+                      <button
+                        onClick={handleViewBloodBanks}
+                        className="bg-white/10 hover:bg-white/20 text-white py-3 rounded-xl transition-colors text-sm font-medium">
+                        🏥 Blood Banks
+                      </button>
+                    </div>
+
                     <button
                       onClick={handleResetData}
                       className="w-full bg-transparent border border-red-200 text-red-600 hover:bg-red-50 py-3 rounded-md transition-colors">
@@ -1093,82 +1213,186 @@ export default function Dashboard() {
                     </div>
                     <div className="space-y-4 max-h-[400px] overflow-y-auto">
                       {matchResults.map((result, index) => (
-                        <div key={index} className={`p-4 rounded-lg border ${
-                          result.matchesFound > 0 
-                            ? 'bg-white border-green-200' 
-                            : 'bg-gray-50 border-gray-200'
-                        }`}>
+                        <div key={index} className={`p-4 rounded-lg border ${result.matchesFound > 0
+                          ? 'bg-white border-green-200'
+                          : 'bg-gray-50 border-gray-200'
+                          }`}>
                           <div className="flex items-center justify-between mb-2">
                             <div className="flex items-center space-x-2">
                               <Droplet className={`h-5 w-5 ${result.matchesFound > 0 ? 'text-[#DC2626]' : 'text-gray-400'}`} />
                               <span className="font-semibold text-lg">{result.bloodType}</span>
                               <span className="text-gray-500">Blood Request</span>
                             </div>
-                            <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                              result.matchesFound > 0 
-                                ? 'bg-green-100 text-green-700' 
-                                : 'bg-gray-100 text-gray-600'
-                            }`}>
-                              {result.matchesFound > 0 
-                                ? `${result.matchesFound} Donors Matched` 
+                            <span className={`px-3 py-1 rounded-full text-sm font-medium ${result.matchesFound > 0
+                              ? 'bg-green-100 text-green-700'
+                              : 'bg-gray-100 text-gray-600'
+                              }`}>
+                              {result.matchesFound > 0
+                                ? `${result.matchesFound} Donors Matched`
                                 : 'No Match'}
                             </span>
                           </div>
-                          
+
                           {result.success && result.matchesFound > 0 && (
                             <div className="mt-3 pt-3 border-t border-gray-100">
-                              <p className="text-sm font-medium text-gray-700 mb-2">Matched Donors:</p>
-                              <div className="space-y-2">
-                                {result.matches?.slice(0, 3).map((match: any, i: number) => (
-                                  <div key={i} className="flex items-center justify-between bg-green-50 p-2 rounded">
-                                    <div className="flex items-center space-x-2">
-                                      <Droplet className="h-4 w-4 text-[#DC2626]" />
-                                      <span className="font-medium">{match.donorName}</span>
-                                      <span className="text-sm text-gray-600">({match.donorBloodType})</span>
-                                      <span className="text-xs text-gray-500">📍 {match.donorLocation}</span>
+                              <p className="text-sm font-medium text-gray-700 mb-3">Matched Donors (Click to view full profile):</p>
+                              <div className="space-y-3">
+                                {result.matches?.map((match: any, i: number) => (
+                                  <div
+                                    key={i}
+                                    className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md hover:border-red-200 transition-all cursor-pointer"
+                                    onClick={() => {
+                                      setSelectedDonorProfile({
+                                        donorId: match.donorId,
+                                        donorName: match.donorName,
+                                        donorBloodType: match.donorBloodType,
+                                        donorLocation: match.donorLocation,
+                                        donorContact: match.donorContact,
+                                        donorAvailability: match.donorAvailability || 'Available',
+                                        compatibilityScore: match.compatibilityScore,
+                                        matchReasons: match.matchReasons || [],
+                                        warnings: match.warnings || [],
+                                        isEligible: match.isEligible !== false,
+                                        priority: match.priority || 'medium',
+                                        // Core Identity
+                                        email: match.email,
+                                        age: match.age,
+                                        gender: match.gender,
+                                        // Blood Type
+                                        rhPositive: match.rhPositive,
+                                        // Extended Antigen Profile
+                                        rhVariants: match.rhVariants,
+                                        kell: match.kell,
+                                        duffy: match.duffy,
+                                        kidd: match.kidd,
+                                        // Donation History & Physiology
+                                        weight: match.weight,
+                                        lastDonationDate: match.lastDonationDate,
+                                        totalDonations: match.totalDonations,
+                                        hemoglobinLevel: match.hemoglobinLevel,
+                                        deferralHistory: match.deferralHistory,
+                                        // Absolute Eligibility (Hard Stop)
+                                        eligibilityFactors: match.eligibilityFactors,
+                                        // Temporary Eligibility
+                                        temporaryFactors: match.temporaryFactors,
+                                        // Communication & Availability
+                                        willingForEmergency: match.willingForEmergency,
+                                        preferredContactMethod: match.preferredContactMethod,
+                                        responseRate: match.responseRate,
+                                      });
+                                      setShowDonorProfileModal(true);
+                                    }}
+                                  >
+                                    <div className="flex items-start justify-between">
+                                      {/* Donor Info */}
+                                      <div className="flex items-start space-x-3">
+                                        <div className="h-12 w-12 rounded-full bg-gradient-to-br from-red-100 to-red-200 flex items-center justify-center flex-shrink-0">
+                                          <span className="text-red-600 font-bold text-lg">{match.donorBloodType}</span>
+                                        </div>
+                                        <div>
+                                          <div className="flex items-center space-x-2">
+                                            <h4 className="font-semibold text-gray-900">{match.donorName}</h4>
+                                            <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${match.priority === 'high' ? 'bg-green-100 text-green-700' :
+                                              match.priority === 'medium' ? 'bg-yellow-100 text-yellow-700' :
+                                                'bg-gray-100 text-gray-700'
+                                              }`}>
+                                              {(match.priority || 'medium').toUpperCase()}
+                                            </span>
+                                          </div>
+                                          <div className="flex flex-wrap items-center gap-3 mt-1 text-sm text-gray-600">
+                                            <span className="flex items-center">
+                                              <MapPin className="h-3.5 w-3.5 mr-1" />
+                                              {match.donorLocation || 'Not specified'}
+                                            </span>
+                                            {match.donorContact && (
+                                              <span className="flex items-center">
+                                                <Phone className="h-3.5 w-3.5 mr-1" />
+                                                {match.donorContact}
+                                              </span>
+                                            )}
+                                            <span className="flex items-center">
+                                              <Clock className="h-3.5 w-3.5 mr-1" />
+                                              {match.donorAvailability || 'Available'}
+                                            </span>
+                                          </div>
+
+                                          {/* Additional donor details */}
+                                          <div className="flex flex-wrap items-center gap-2 mt-2">
+                                            {match.age && (
+                                              <span className="text-xs px-2 py-0.5 bg-gray-100 rounded text-gray-600">
+                                                Age: {match.age}
+                                              </span>
+                                            )}
+                                            {match.gender && (
+                                              <span className="text-xs px-2 py-0.5 bg-gray-100 rounded text-gray-600 capitalize">
+                                                {match.gender}
+                                              </span>
+                                            )}
+                                            {match.totalDonations !== undefined && (
+                                              <span className="text-xs px-2 py-0.5 bg-red-50 rounded text-red-600">
+                                                {match.totalDonations} donations
+                                              </span>
+                                            )}
+                                            {match.isEligible !== false && (
+                                              <span className="text-xs px-2 py-0.5 bg-green-50 rounded text-green-600 flex items-center">
+                                                <CheckCircle className="h-3 w-3 mr-1" />
+                                                Eligible
+                                              </span>
+                                            )}
+                                          </div>
+
+                                          {/* Match reasons preview */}
+                                          {match.matchReasons && match.matchReasons.length > 0 && (
+                                            <div className="flex flex-wrap gap-1 mt-2">
+                                              {match.matchReasons.slice(0, 2).map((reason: string, idx: number) => (
+                                                <span key={idx} className="text-xs px-2 py-0.5 bg-green-50 text-green-700 rounded-full">
+                                                  ✓ {reason}
+                                                </span>
+                                              ))}
+                                              {match.matchReasons.length > 2 && (
+                                                <span className="text-xs text-gray-400">+{match.matchReasons.length - 2} more</span>
+                                              )}
+                                            </div>
+                                          )}
+                                        </div>
+                                      </div>
+
+                                      {/* Score and Action */}
+                                      <div className="flex flex-col items-end space-y-2">
+                                        <span className={`text-lg font-bold px-3 py-1 rounded ${match.compatibilityScore >= 80 ? 'bg-green-100 text-green-800' :
+                                          match.compatibilityScore >= 60 ? 'bg-yellow-100 text-yellow-800' :
+                                            'bg-orange-100 text-orange-800'
+                                          }`}>
+                                          {match.compatibilityScore}% match
+                                        </span>
+                                        <button className="text-xs text-red-600 hover:text-red-800 font-medium flex items-center">
+                                          <Eye className="h-3 w-3 mr-1" />
+                                          View Full Profile
+                                        </button>
+                                      </div>
                                     </div>
-                                    <span className={`text-sm font-bold px-2 py-0.5 rounded ${
-                                      match.compatibilityScore >= 80 ? 'bg-green-200 text-green-800' :
-                                      match.compatibilityScore >= 60 ? 'bg-yellow-200 text-yellow-800' :
-                                      'bg-orange-200 text-orange-800'
-                                    }`}>
-                                      {match.compatibilityScore}% match
-                                    </span>
                                   </div>
                                 ))}
-                                {result.matches?.length > 3 && (
-                                  <p className="text-xs text-gray-500">+{result.matches.length - 3} more donors</p>
-                                )}
                               </div>
                               <button
                                 onClick={() => router.push('/blood-requests')}
-                                className="text-sm text-purple-600 hover:text-purple-800 font-medium flex items-center mt-2"
+                                className="text-sm text-purple-600 hover:text-purple-800 font-medium flex items-center mt-3"
                               >
                                 View Request Details →
                               </button>
                             </div>
                           )}
-                          
+
                           {result.error && (
                             <p className="text-sm text-red-600 mt-2">Error: {result.error}</p>
                           )}
-                          
+
                           {result.success && result.matchesFound === 0 && (
-                            <div className="mt-2 text-sm text-gray-500">
-                              <p className="font-medium text-gray-600">Why no matches?</p>
-                              <p>No compatible blood types found in the donor pool. {result.bloodType} can only receive from:</p>
-                              <p className="text-xs mt-1 text-gray-400">
-                                {result.bloodType === 'O-' ? 'O- only (universal recipient for O-)' :
-                                 result.bloodType === 'O+' ? 'O-, O+' :
-                                 result.bloodType === 'A-' ? 'A-, O-' :
-                                 result.bloodType === 'A+' ? 'A+, A-, O+, O-' :
-                                 result.bloodType === 'B-' ? 'B-, O-' :
-                                 result.bloodType === 'B+' ? 'B+, B-, O+, O-' :
-                                 result.bloodType === 'AB-' ? 'AB-, A-, B-, O-' :
-                                 result.bloodType === 'AB+' ? 'All blood types (universal recipient)' :
-                                 'Compatible blood types'}
-                              </p>
-                            </div>
+                            <NoMatchExplanation
+                              bloodType={result.bloodType}
+                              availableDonorBloodTypes={result.availableDonorTypes || []}
+                              urgency={result.urgency}
+                            />
                           )}
                         </div>
                       ))}
@@ -1213,6 +1437,34 @@ export default function Dashboard() {
           setShowBloodRequestModal(false);
           // Optionally refresh data
           refreshUserDataAndDonations();
+        }}
+      />
+
+      {/* Donor Profile Modal for viewing complete donor information */}
+      <DonorProfileModal
+        isOpen={showDonorProfileModal}
+        onClose={() => {
+          setShowDonorProfileModal(false);
+          setSelectedDonorProfile(null);
+        }}
+        donor={selectedDonorProfile}
+        onContactDonor={(donor) => {
+          // Open phone dialer or copy number
+          if (donor.donorContact) {
+            window.open(`tel:${donor.donorContact}`, '_blank');
+          } else {
+            toast.error('No contact number available for this donor');
+          }
+        }}
+        onNotifyDonor={async (donor) => {
+          try {
+            toast.loading('Notifying donor...', { id: 'notify-donor' });
+            // The notification would typically be sent via API
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            toast.success(`Notification sent to ${donor.donorName}!`, { id: 'notify-donor' });
+          } catch (error) {
+            toast.error('Failed to notify donor', { id: 'notify-donor' });
+          }
         }}
       />
     </div>

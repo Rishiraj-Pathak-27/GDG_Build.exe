@@ -1180,7 +1180,7 @@ export default function Dashboard() {
 
                     <div className="grid grid-cols-2 gap-3">
                       <button
-                        onClick={() => handleRescheduleAppointment()}
+                        onClick={() => userType === 'donor' ? handleRescheduleAppointment() : router.push('/blood-status')}
                         className="bg-white/10 hover:bg-white/20 text-white py-3 rounded-xl transition-colors text-sm font-medium">
                         {userType === 'donor' ? '📅 Reschedule' : '📊 Status'}
                       </button>

@@ -1,0 +1,223 @@
+﻿  Γû▓ Next.js 14.2.26
+  - Environments: .env.local, .env.production
+
+   Creating an optimized production build ...
+ Γ£ô Compiled successfully
+   Linting and checking validity of types ...
+   Collecting page data ...
+   Generating static pages (0/20) ...
+Initializing Firebase with config: {
+  apiKey: 'AIzaSyBc-iLFO3gg7VbXvVfc7rWDwod5LhqIS6k',
+  authDomain: 'smart-blood-donation-8ca0e.firebaseapp.com',
+  databaseURL: 'https://smart-blood-donation-8ca0e-default-rtdb.asia-southeast1.firebasedatabase.app',
+  projectId: 'smart-blood-donation-8ca0e',
+  storageBucket: 'smart-blood-donation-8ca0e.firebasestorage.app',
+  messagingSenderId: '1053679517257',
+  appId: '1:1053679517257:web:a4aa2398d42683be794998',
+  measurementId: 'G-CPGQ4GL0D1'
+}
+Firebase successfully initialized!
+User is signed out
+Initializing Firebase with config: {
+  apiKey: 'AIzaSyBc-iLFO3gg7VbXvVfc7rWDwod5LhqIS6k',
+  authDomain: 'smart-blood-donation-8ca0e.firebaseapp.com',
+  databaseURL: 'https://smart-blood-donation-8ca0e-default-rtdb.asia-southeast1.firebasedatabase.app',
+  projectId: 'smart-blood-donation-8ca0e',
+  storageBucket: 'smart-blood-donation-8ca0e.firebasestorage.app',
+  messagingSenderId: '1053679517257',
+  appId: '1:1053679517257:web:a4aa2398d42683be794998',
+  measurementId: 'G-CPGQ4GL0D1'
+}
+Firebase successfully initialized!
+User is signed out
+Initializing Firebase with config: {
+  apiKey: 'AIzaSyBc-iLFO3gg7VbXvVfc7rWDwod5LhqIS6k',
+  authDomain: 'smart-blood-donation-8ca0e.firebaseapp.com',
+  databaseURL: 'https://smart-blood-donation-8ca0e-default-rtdb.asia-southeast1.firebasedatabase.app',
+  projectId: 'smart-blood-donation-8ca0e',
+  storageBucket: 'smart-blood-donation-8ca0e.firebasestorage.app',
+  messagingSenderId: '1053679517257',
+  appId: '1:1053679517257:web:a4aa2398d42683be794998',
+  measurementId: 'G-CPGQ4GL0D1'
+}
+Firebase successfully initialized!
+User is signed out
+Initializing Firebase with config: {
+  apiKey: 'AIzaSyBc-iLFO3gg7VbXvVfc7rWDwod5LhqIS6k',
+  authDomain: 'smart-blood-donation-8ca0e.firebaseapp.com',
+  databaseURL: 'https://smart-blood-donation-8ca0e-default-rtdb.asia-southeast1.firebasedatabase.app',
+  projectId: 'smart-blood-donation-8ca0e',
+  storageBucket: 'smart-blood-donation-8ca0e.firebasestorage.app',
+  messagingSenderId: '1053679517257',
+  appId: '1:1053679517257:web:a4aa2398d42683be794998',
+  measurementId: 'G-CPGQ4GL0D1'
+}
+Firebase successfully initialized!
+User is signed out
+Initializing Firebase with config: {
+  apiKey: 'AIzaSyBc-iLFO3gg7VbXvVfc7rWDwod5LhqIS6k',
+  authDomain: 'smart-blood-donation-8ca0e.firebaseapp.com',
+  databaseURL: 'https://smart-blood-donation-8ca0e-default-rtdb.asia-southeast1.firebasedatabase.app',
+  projectId: 'smart-blood-donation-8ca0e',
+  storageBucket: 'smart-blood-donation-8ca0e.firebasestorage.app',
+  messagingSenderId: '1053679517257',
+  appId: '1:1053679517257:web:a4aa2398d42683be794998',
+  measurementId: 'G-CPGQ4GL0D1'
+}
+Firebase successfully initialized!
+User is signed out
+Initializing Firebase with config: {
+  apiKey: 'AIzaSyBc-iLFO3gg7VbXvVfc7rWDwod5LhqIS6k',
+  authDomain: 'smart-blood-donation-8ca0e.firebaseapp.com',
+  databaseURL: 'https://smart-blood-donation-8ca0e-default-rtdb.asia-southeast1.firebasedatabase.app',
+  projectId: 'smart-blood-donation-8ca0e',
+  storageBucket: 'smart-blood-donation-8ca0e.firebasestorage.app',
+  messagingSenderId: '1053679517257',
+  appId: '1:1053679517257:web:a4aa2398d42683be794998',
+  measurementId: 'G-CPGQ4GL0D1'
+}
+Firebase successfully initialized!
+User is signed out
+Initializing Firebase with config: {
+  apiKey: 'AIzaSyBc-iLFO3gg7VbXvVfc7rWDwod5LhqIS6k',
+  authDomain: 'smart-blood-donation-8ca0e.firebaseapp.com',
+  databaseURL: 'https://smart-blood-donation-8ca0e-default-rtdb.asia-southeast1.firebasedatabase.app',
+  projectId: 'smart-blood-donation-8ca0e',
+  storageBucket: 'smart-blood-donation-8ca0e.firebasestorage.app',
+  messagingSenderId: '1053679517257',
+  appId: '1:1053679517257:web:a4aa2398d42683be794998',
+  measurementId: 'G-CPGQ4GL0D1'
+}
+Firebase successfully initialized!
+Initializing Firebase with config: {
+  apiKey: 'AIzaSyBc-iLFO3gg7VbXvVfc7rWDwod5LhqIS6k',
+  authDomain: 'smart-blood-donation-8ca0e.firebaseapp.com',
+  databaseURL: 'https://smart-blood-donation-8ca0e-default-rtdb.asia-southeast1.firebasedatabase.app',
+  projectId: 'smart-blood-donation-8ca0e',
+  storageBucket: 'smart-blood-donation-8ca0e.firebasestorage.app',
+  messagingSenderId: '1053679517257',
+  appId: '1:1053679517257:web:a4aa2398d42683be794998',
+  measurementId: 'G-CPGQ4GL0D1'
+}
+Firebase successfully initialized!
+User is signed out
+Initializing Firebase with config: {
+  apiKey: 'AIzaSyBc-iLFO3gg7VbXvVfc7rWDwod5LhqIS6k',
+  authDomain: 'smart-blood-donation-8ca0e.firebaseapp.com',
+  databaseURL: 'https://smart-blood-donation-8ca0e-default-rtdb.asia-southeast1.firebasedatabase.app',
+  projectId: 'smart-blood-donation-8ca0e',
+  storageBucket: 'smart-blood-donation-8ca0e.firebasestorage.app',
+  messagingSenderId: '1053679517257',
+  appId: '1:1053679517257:web:a4aa2398d42683be794998',
+  measurementId: 'G-CPGQ4GL0D1'
+}
+Firebase successfully initialized!
+User is signed out
+   Generating static pages (5/20) 
+Initializing Firebase with config: {
+  apiKey: 'AIzaSyBc-iLFO3gg7VbXvVfc7rWDwod5LhqIS6k',
+  authDomain: 'smart-blood-donation-8ca0e.firebaseapp.com',
+  databaseURL: 'https://smart-blood-donation-8ca0e-default-rtdb.asia-southeast1.firebasedatabase.app',
+  projectId: 'smart-blood-donation-8ca0e',
+  storageBucket: 'smart-blood-donation-8ca0e.firebasestorage.app',
+  messagingSenderId: '1053679517257',
+  appId: '1:1053679517257:web:a4aa2398d42683be794998',
+  measurementId: 'G-CPGQ4GL0D1'
+}
+Firebase successfully initialized!
+User is signed out
+Initializing Firebase with config: {
+  apiKey: 'AIzaSyBc-iLFO3gg7VbXvVfc7rWDwod5LhqIS6k',
+  authDomain: 'smart-blood-donation-8ca0e.firebaseapp.com',
+  databaseURL: 'https://smart-blood-donation-8ca0e-default-rtdb.asia-southeast1.firebasedatabase.app',
+  projectId: 'smart-blood-donation-8ca0e',
+  storageBucket: 'smart-blood-donation-8ca0e.firebasestorage.app',
+  messagingSenderId: '1053679517257',
+  appId: '1:1053679517257:web:a4aa2398d42683be794998',
+  measurementId: 'G-CPGQ4GL0D1'
+}
+Initializing Firebase with config: {
+  apiKey: 'AIzaSyBc-iLFO3gg7VbXvVfc7rWDwod5LhqIS6k',
+  authDomain: 'smart-blood-donation-8ca0e.firebaseapp.com',
+  databaseURL: 'https://smart-blood-donation-8ca0e-default-rtdb.asia-southeast1.firebasedatabase.app',
+  projectId: 'smart-blood-donation-8ca0e',
+  storageBucket: 'smart-blood-donation-8ca0e.firebasestorage.app',
+  messagingSenderId: '1053679517257',
+  appId: '1:1053679517257:web:a4aa2398d42683be794998',
+  measurementId: 'G-CPGQ4GL0D1'
+}
+Firebase successfully initialized!
+Firebase successfully initialized!
+User is signed out
+User is signed out
+Initializing Firebase with config: {
+  apiKey: 'AIzaSyBc-iLFO3gg7VbXvVfc7rWDwod5LhqIS6k',
+  authDomain: 'smart-blood-donation-8ca0e.firebaseapp.com',
+  databaseURL: 'https://smart-blood-donation-8ca0e-default-rtdb.asia-southeast1.firebasedatabase.app',
+  projectId: 'smart-blood-donation-8ca0e',
+  storageBucket: 'smart-blood-donation-8ca0e.firebasestorage.app',
+  messagingSenderId: '1053679517257',
+  appId: '1:1053679517257:web:a4aa2398d42683be794998',
+  measurementId: 'G-CPGQ4GL0D1'
+}
+User is signed out
+Firebase successfully initialized!
+User is signed out
+   Generating static pages (10/20) 
+Initializing Firebase with config: {
+  apiKey: 'AIzaSyBc-iLFO3gg7VbXvVfc7rWDwod5LhqIS6k',
+  authDomain: 'smart-blood-donation-8ca0e.firebaseapp.com',
+  databaseURL: 'https://smart-blood-donation-8ca0e-default-rtdb.asia-southeast1.firebasedatabase.app',
+  projectId: 'smart-blood-donation-8ca0e',
+  storageBucket: 'smart-blood-donation-8ca0e.firebasestorage.app',
+  messagingSenderId: '1053679517257',
+  appId: '1:1053679517257:web:a4aa2398d42683be794998',
+  measurementId: 'G-CPGQ4GL0D1'
+}
+Firebase successfully initialized!
+Initializing Firebase with config: {
+  apiKey: 'AIzaSyBc-iLFO3gg7VbXvVfc7rWDwod5LhqIS6k',
+  authDomain: 'smart-blood-donation-8ca0e.firebaseapp.com',
+  databaseURL: 'https://smart-blood-donation-8ca0e-default-rtdb.asia-southeast1.firebasedatabase.app',
+  projectId: 'smart-blood-donation-8ca0e',
+  storageBucket: 'smart-blood-donation-8ca0e.firebasestorage.app',
+  messagingSenderId: '1053679517257',
+  appId: '1:1053679517257:web:a4aa2398d42683be794998',
+  measurementId: 'G-CPGQ4GL0D1'
+}
+User is signed out
+Firebase successfully initialized!
+User is signed out
+   Generating static pages (15/20) 
+ Γ£ô Generating static pages (20/20)
+   Finalizing page optimization ...
+   Collecting build traces ...
+
+Route (app)                              Size     First Load JS
+Γöî Γùï /                                    53.6 kB         347 kB
+Γö£ Γùï /_not-found                          873 B          88.1 kB
+Γö£ ╞Æ /api/blood-shortage                  0 B                0 B
+Γö£ ╞Æ /api/explain-no-match                0 B                0 B
+Γö£ ╞Æ /api/match                           0 B                0 B
+Γö£ Γùï /auth/blood-bank-login               2.24 kB        96.6 kB
+Γö£ Γùï /auth/blood-bank-register            2.64 kB          97 kB
+Γö£ Γùï /auth/login                          3.36 kB         251 kB
+Γö£ Γùï /auth/register                       3.66 kB         251 kB
+Γö£ Γùï /blood-bank-dashboard                4.1 kB         98.5 kB
+Γö£ Γùï /blood-banks                         41.3 kB         343 kB
+Γö£ Γùï /blood-requests                      6.18 kB         307 kB
+Γö£ Γùï /blood-status                        10.3 kB         141 kB
+Γö£ Γùï /dashboard                           23.1 kB         331 kB
+Γö£ Γùï /hospital/blood-requests             1.81 kB         254 kB
+Γö£ Γùï /hospital/dashboard                  2.39 kB         254 kB
+Γö£ Γùï /profile                             4.79 kB         307 kB
+Γöö Γùï /settings                            8.45 kB         305 kB
++ First Load JS shared by all            87.2 kB
+  Γö£ chunks/117-dfc35ee45164ac02.js       31.6 kB
+  Γö£ chunks/fd9d1056-37b645ad7ad9e4d0.js  53.6 kB
+  Γöö other shared chunks (total)          1.99 kB
+
+
+Γùï  (Static)   prerendered as static content
+╞Æ  (Dynamic)  server-rendered on demand
+

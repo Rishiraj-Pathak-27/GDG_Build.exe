@@ -1,12 +1,22 @@
+"use client";
+
 import { useState, useEffect } from 'react';
 import { Bell, Calendar, Users, MapPin, Clock, AlertCircle, Check, X } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { donationAPI } from '@/lib/api';
 import { toast } from 'react-hot-toast';
 
+interface Appointment {
+  id: string;
+  donorName: string;
+  donationDate: string;
+  location: string;
+  status: 'pending' | 'confirmed' | 'completed' | 'rejected' | 'active';
+}
+
 export default function HospitalDashboard() {
   const { user, userData } = useAuth();
-  const [appointments, setAppointments] = useState([]);
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
     pendingAppointments: 0,
@@ -15,28 +25,33 @@ export default function HospitalDashboard() {
   });
 
   useEffect(() => {
-    if (user?.role !== 'HOSPITAL') {
+    // Check if user has hospital role (from userData since role may be stored there)
+    const userRole = userData?.role?.toUpperCase();
+    if (userRole && userRole !== 'HOSPITAL') {
       toast.error('Access denied. Hospital access only.');
       // Redirect to home or appropriate page
       window.location.href = '/';
       return;
     }
 
-    loadDashboardData();
-  }, [user]);
+    if (user) {
+      loadDashboardData();
+    }
+  }, [user, userData]);
 
   const loadDashboardData = async () => {
     try {
       setLoading(true);
+      if (!user) return;
       // Fetch appointments
-      const appointmentsData = await donationAPI.getHospitalAppointments(user.uid);
+      const appointmentsData = await donationAPI.getHospitalAppointments(user.uid) as Appointment[];
       setAppointments(appointmentsData);
 
       // Calculate stats
       setStats({
-        pendingAppointments: appointmentsData.filter(a => a.status === 'pending').length,
-        completedDonations: appointmentsData.filter(a => a.status === 'completed').length,
-        activeRequests: appointmentsData.filter(a => a.status === 'active').length
+        pendingAppointments: appointmentsData.filter((a) => a.status === 'pending').length,
+        completedDonations: appointmentsData.filter((a) => a.status === 'completed').length,
+        activeRequests: appointmentsData.filter((a) => a.status === 'active').length
       });
     } catch (error) {
       console.error('Error loading dashboard data:', error);

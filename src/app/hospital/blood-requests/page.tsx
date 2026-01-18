@@ -1,3 +1,5 @@
+"use client";
+
 import { useState } from 'react';
 import { Bell, MapPin, AlertCircle, Plus } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';

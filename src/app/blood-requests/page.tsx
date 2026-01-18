@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Bell, Droplet, Heart, Users, LayoutDashboard, User, Settings, LogOut, UserCircle, MapPin, Calendar, Clock, Filter, Search, ChevronDown, AlertCircle, Info, RefreshCcw } from 'lucide-react';
+import { Bell, Droplet, Heart, Users, LayoutDashboard, User, Settings, LogOut, UserCircle, MapPin, Calendar, Clock, Filter, Search, ChevronDown, AlertCircle, Info, RefreshCcw, Database } from 'lucide-react';
 import Link from 'next/link';
 import { Sidebar, SidebarBody, SidebarLink } from '@/components/ui/sidebar';
 import { motion } from 'framer-motion';
@@ -398,17 +398,8 @@ export default function BloodRequestsPage() {
                   <p className="text-[#7F8C8D] mt-1">
                     {bloodTypeFilter !== 'all' || urgencyFilter !== 'all' || searchQuery
                       ? 'Try adjusting your filters or search criteria'
-                      : 'Click "Seed Dummy Data" to add sample blood requests to Firebase'}
+                      : 'No blood requests are currently available'}
                   </p>
-                  {bloodTypeFilter === 'all' && urgencyFilter === 'all' && !searchQuery && (
-                    <button
-                      onClick={seedDummyData}
-                      disabled={seeding}
-                      className="mt-4 px-4 py-2 bg-[#DC2626] text-white rounded-md hover:bg-[#B91C1C] transition-colors disabled:opacity-50"
-                    >
-                      {seeding ? 'Seeding...' : 'Seed Dummy Data'}
-                    </button>
-                  )}
                 </div>
               )}
             </div>
